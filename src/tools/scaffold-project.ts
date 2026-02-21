@@ -5,7 +5,7 @@ import type { SourceReader, SourceFile } from '../data/source-reader';
 import type { DependencyResolver } from '../data/dependency-resolver';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
-import { getSourceBaseUrl } from '../data/base-url';
+import { getSourceBaseUrl, getSiteBaseUrl } from '../data/base-url';
 
 // ── Layer directory names ────────────────────────────────────────────
 const LAYER_DIR: Record<number, string> = {
@@ -374,6 +374,7 @@ export function registerScaffoldProject(
         infrastructure: {
           tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
           utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
+          fonts: { destPath: 'src/styles/fonts.css', url: `${getSiteBaseUrl()}/fonts.css` },
         },
       };
 

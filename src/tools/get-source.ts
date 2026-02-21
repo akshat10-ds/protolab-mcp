@@ -5,7 +5,7 @@ import type { SourceReader, SourceFile } from '../data/source-reader';
 import type { DependencyResolver } from '../data/dependency-resolver';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
-import { getSourceBaseUrl } from '../data/base-url';
+import { getSourceBaseUrl, getSiteBaseUrl } from '../data/base-url';
 
 /** Convert a bundle path like "design-system/2-utilities/Stack/Stack.tsx" to a static URL path */
 function toStaticPath(bundlePath: string): string {
@@ -155,6 +155,7 @@ export function registerGetSource(
         infrastructure: {
           tokens: `${baseUrl}/tokens.css`,
           utility: `${baseUrl}/utils.ts`,
+          fonts: `${getSiteBaseUrl()}/fonts.css`,
         },
       };
 
