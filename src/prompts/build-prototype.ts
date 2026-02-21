@@ -95,14 +95,88 @@ Call \`get_design_tokens\` for any custom styling needed:
 - \`get_design_tokens({ category: "typography" })\` for font tokens
 
 ## Step 6: Generate Prototype Code
-Write your prototype in \`src/App.tsx\` (or create additional page files).
-Import components from \`@/design-system\`.
+
+Write your prototype in \`src/App.tsx\`. Follow this template structure:
+
+\`\`\`tsx
+import { useState } from 'react';
+import {
+  // Layer 6 layouts (outermost wrapper)
+  DocuSignShell,
+  // Layer 5 patterns (page-level sections)
+  PageHeader, DataTable, FilterBar,
+  // Layer 4 composites (multi-part UI)
+  Modal, Tabs, Drawer,
+  // Layer 3 primitives (atomic elements)
+  Button, Input, Select, Card, Text, Heading, Badge,
+  // Layer 2 utilities (layout helpers)
+  Stack, Grid, Inline,
+} from '@/design-system';
+
+// 1. Define config objects for navigation (if using DocuSignShell)
+const globalNavProps = {
+  logo: <img src="/logo.svg" alt="Logo" height={24} />,
+  navItems: [{ id: 'home', label: 'Home', href: '#', active: true }],
+};
+
+// 2. Define data and types
+interface MyData { id: string; name: string; }
+const DATA: MyData[] = [{ id: '1', name: 'Example' }];
+
+export default function App() {
+  // 3. State for interactive elements
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  return (
+    // 4. Outermost: layout shell (globalNav/localNav are PROPS OBJECTS, not JSX)
+    <DocuSignShell globalNav={globalNavProps}>
+      {/* 5. Use Stack for vertical layout with token-based spacing */}
+      <Stack gap="var(--ink-spacing-300)">
+        {/* 6. Compose higher layers wrapping lower layers */}
+        <Card>
+          <Stack gap="var(--ink-spacing-200)">
+            <Heading level={2}>Section Title</Heading>
+            <Input label="Field" value="" onChange={() => {}} />
+            <Button kind="brand">Action</Button>
+          </Stack>
+        </Card>
+      </Stack>
+    </DocuSignShell>
+  );
+}
+\`\`\`
+
+### Critical composition rules:
+- **DocuSignShell.globalNav** and **localNav** are **props objects**, NOT JSX elements
+- **DataTable/Table** are data-driven: use \`columns\` and \`data\` props (not children)
+- **Tabs/Accordion** are data-driven: use \`items\` prop with \`{id, label, content}\`
+- **Popover/Dropdown/Tooltip** children must be a **single ReactElement** (the trigger)
+- **Modal/Drawer** have slot props: \`title\`, \`footer\` (ReactNode), and \`children\` for body
+- **AgreementTableView** has slot props: \`pageHeader\`, \`filterBar\`, \`banner\`
+- **Stack/Grid/Inline** are the primary layout utilities — use them everywhere
+- Call \`get_component\` to check the \`composition\` field for any component you're unsure about
+
+### Styling rules:
+- Use \`var(--ink-spacing-*)\` for all padding, margin, gap (100=8px, 200=16px, 300=24px, 400=32px)
+- Use \`var(--ink-font-color-*)\` for text colors, \`var(--ink-bg-color-*)\` for backgrounds
+- Use \`var(--ink-border-color-*)\` for borders, \`var(--ink-radius-*)\` for border-radius
+- NEVER hardcode colors or spacing — always use design tokens
+
+## Step 7: Validate Your Code
+After writing the prototype, call \`validate_component_usage\` with your code to check:
+- All component names are valid
+- Required props are present
+- Composition patterns are correct
+- No hardcoded values that should be tokens
+
+Fix any issues before presenting the result.
 
 ## Rules
 - ONLY use components returned by the tools — don't invent components
 - Use design tokens for all styling — never hardcoded values
 - Import from '@/design-system' or specific layer paths
-- Layer hierarchy: layouts contain patterns contain composites contain primitives`;
+- Layer hierarchy: layouts contain patterns contain composites contain primitives
+- Always check the \`composition\` field on get_component for complex components`;
 
       // Find and include a relevant reference example
       const example = findBestExample(description);
