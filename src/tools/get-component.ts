@@ -73,6 +73,7 @@ export function registerGetComponent(
         ...(meta.sizes && { sizes: meta.sizes }),
         ...(meta.statuses && { statuses: meta.statuses }),
         ...(meta.iconList && { iconList: meta.iconList }),
+        ...(meta.composition && { composition: meta.composition }),
         examples: meta.examples,
         useCases: meta.useCases,
         dependencies: deps.map(d => ({

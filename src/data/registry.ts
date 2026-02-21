@@ -20,6 +20,19 @@ export interface ComponentPropDetails {
   extends?: string;
 }
 
+export interface SlotPropDef {
+  type: string;
+  description: string;
+}
+
+export interface CompositionRule {
+  childrenType: string;
+  childrenDescription: string;
+  slotProps: Record<string, SlotPropDef>;
+  typicalParents: string[];
+  typicalChildren: string[];
+}
+
 export interface ComponentMeta {
   name: string;
   layer: number;
@@ -37,6 +50,7 @@ export interface ComponentMeta {
   iconList?: string[];
   aliases?: string[];
   propDetails?: ComponentPropDetails;
+  composition?: CompositionRule;
 }
 
 interface RegistryData {
