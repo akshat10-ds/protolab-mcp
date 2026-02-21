@@ -1,6 +1,38 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Registry } from '../data/registry';
+import examples from '@/data/examples.json';
+
+interface Example {
+  id: string;
+  title: string;
+  description: string;
+  complexity: string;
+  componentsUsed: string[];
+  code: string;
+}
+
+function findBestExample(description: string): Example | null {
+  const q = description.toLowerCase();
+  const exs = examples.examples as Example[];
+
+  // Simple keyword matching to find the most relevant example
+  const scored = exs.map(ex => {
+    let score = 0;
+    const words = q.split(/\s+/);
+    for (const word of words) {
+      if (ex.title.toLowerCase().includes(word)) score += 3;
+      if (ex.description.toLowerCase().includes(word)) score += 2;
+      for (const comp of ex.componentsUsed) {
+        if (comp.toLowerCase().includes(word)) score += 1;
+      }
+    }
+    return { ex, score };
+  });
+
+  const best = scored.sort((a, b) => b.score - a.score)[0];
+  return best && best.score > 0 ? best.ex : exs[0]; // fallback to first example
+}
 
 export function registerBuildPrototypePrompt(server: McpServer, registry: Registry) {
   server.prompt(
@@ -72,6 +104,12 @@ Import components from \`@/design-system\`.
 - Import from '@/design-system' or specific layer paths
 - Layer hierarchy: layouts contain patterns contain composites contain primitives`;
 
+      // Find and include a relevant reference example
+      const example = findBestExample(description);
+      const exampleSection = example
+        ? `\n\n## Reference Example: "${example.title}"\n\nHere is a complete working prototype (${example.complexity} complexity) showing correct component composition, prop usage, state management, and token application:\n\nComponents used: ${example.componentsUsed.join(', ')}\n\n\`\`\`tsx\n${example.code}\n\`\`\`\n\nAdapt this pattern to match the user's request. Key things to replicate:\n- Import all components from '@/design-system'\n- Use design tokens (var(--ink-spacing-*), var(--ink-font-*), etc.) for styling\n- Manage state with useState for interactive elements\n- Follow the layer hierarchy (layouts > patterns > composites > primitives > utilities)`
+        : '';
+
       const initialResults = topMatches.length > 0
         ? `\n\n## Initial Component Matches for "${description}"\n\n${JSON.stringify(topMatches, null, 2)}\n\nUse these as a starting point. Call \`get_component\` on the most relevant matches to get full details.`
         : `\n\n## Initial Component Matches\n\nNo direct matches for "${description}". Try broader search terms with \`search_components\`.`;
@@ -82,7 +120,7 @@ Import components from \`@/design-system\`.
             role: 'user' as const,
             content: {
               type: 'text' as const,
-              text: workflow + initialResults,
+              text: workflow + exampleSection + initialResults,
             },
           },
         ],
