@@ -14,8 +14,15 @@ export function registerGetComponent(
   server.tool(
     'get_component',
     'Get full details for a single Ink Design System component — props, examples, dependencies, import pattern',
-    { name: z.string().describe('Component name (e.g., "Button", "DataTable", "Modal")') },
-    withTracking(tracker, 'get_component', server, async ({ name }) => {
+    {
+      name: z.string().describe('Component name (e.g., "Button", "DataTable", "Modal")'),
+      detail: z
+        .enum(['summary', 'full'])
+        .optional()
+        .default('full')
+        .describe('Response detail level. "summary" returns name, import, key props, and composition only (~small). "full" returns everything including propDetails, examples, variants (default).'),
+    },
+    withTracking(tracker, 'get_component', server, async ({ name, detail }) => {
       const meta = registry.getComponent(name);
       if (!meta) {
         const suggestions = registry.searchComponents(name).slice(0, 5);
@@ -53,6 +60,26 @@ export function registerGetComponent(
         found: true,
       });
 
+      // Summary mode: lightweight response for quick lookups
+      if (detail === 'summary') {
+        const result = {
+          name: meta.name,
+          layer: meta.layer,
+          layerName: registry.getLayerName(meta.layer),
+          type: meta.type,
+          description: meta.description,
+          import: `import { ${meta.name} } from '${meta.imports}';`,
+          props: meta.props,
+          ...(meta.composition && { composition: meta.composition }),
+          dependencies: resolver.getDependencies(meta.name).map(d => d.name),
+          hint: 'Call with detail="full" for propDetails, examples, variants, and more.',
+        };
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // Full mode (default): everything
       const deps = resolver.getDependencies(meta.name);
 
       const result = {
