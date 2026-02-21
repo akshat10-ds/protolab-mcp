@@ -35,6 +35,7 @@ export interface ComponentMeta {
   sizes?: string[];
   statuses?: string[];
   iconList?: string[];
+  aliases?: string[];
   propDetails?: ComponentPropDetails;
 }
 
@@ -123,6 +124,16 @@ export class Registry {
         for (const uc of meta.useCases) {
           if (uc.toLowerCase().includes(term)) {
             score += 7;
+          }
+        }
+
+        // Alias match (high weight — these are curated alternative names)
+        if (meta.aliases) {
+          for (const alias of meta.aliases) {
+            if (alias.toLowerCase().includes(term)) {
+              score += 8;
+              if (alias.toLowerCase() === q) score += 5; // exact alias match bonus
+            }
           }
         }
 
