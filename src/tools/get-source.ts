@@ -1,0 +1,113 @@
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { Registry } from '../data/registry';
+import type { SourceReader, SourceFile } from '../data/source-reader';
+import type { DependencyResolver } from '../data/dependency-resolver';
+import type { Tracker } from '../analytics/tracker';
+import { withTracking } from '../analytics/wrapper';
+
+export function registerGetSource(
+  server: McpServer,
+  registry: Registry,
+  sourceReader: SourceReader,
+  resolver: DependencyResolver,
+  tracker: Tracker
+) {
+  server.tool(
+    'get_component_source',
+    'Get source files (TSX, CSS modules, types) for a component and optionally all its transitive dependencies — ready to copy into a project',
+    {
+      name: z.string().describe('Component name (e.g., "Button", "DataTable")'),
+      includeDependencies: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe('Include transitive dependency source files (default: true)'),
+    },
+    withTracking(tracker, 'get_component_source', server, async ({ name, includeDependencies }) => {
+      const meta = registry.getComponent(name);
+      if (!meta) {
+        const suggestions = registry.searchComponents(name).slice(0, 5);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                {
+                  error: `Component "${name}" not found`,
+                  suggestions: suggestions.map(s => s.name),
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // Get component's own files
+      const componentFiles = sourceReader.getComponentFiles(meta.name, meta.layer);
+
+      // Get dependency files if requested
+      const dependencies: { name: string; layer: number; files: SourceFile[] }[] = [];
+      if (includeDependencies) {
+        const deps = resolver.getDependencies(meta.name);
+        for (const dep of deps) {
+          const depMeta = registry.getComponent(dep.name);
+          if (!depMeta) continue;
+          const depFiles = sourceReader.getComponentFiles(dep.name, dep.layer);
+          if (depFiles.length > 0) {
+            dependencies.push({
+              name: dep.name,
+              layer: dep.layer,
+              files: depFiles,
+            });
+          }
+        }
+      }
+
+      // Infrastructure files
+      const infrastructure: SourceFile[] = [];
+      try {
+        infrastructure.push(sourceReader.getTokens());
+      } catch {
+        // tokens.css not found — skip
+      }
+      try {
+        infrastructure.push(sourceReader.getUtility());
+      } catch {
+        // utils.ts not found — skip
+      }
+
+      const result = {
+        component: meta.name,
+        layer: meta.layer,
+        import: `import { ${meta.name} } from '${meta.imports}';`,
+        files: componentFiles,
+        ...(dependencies.length > 0 && { dependencies }),
+        infrastructure,
+      };
+
+      // Semantic event
+      const allFiles = [
+        ...componentFiles,
+        ...dependencies.flatMap(d => d.files),
+        ...infrastructure,
+      ];
+      const totalBytes = allFiles.reduce((sum, f) => sum + f.content.length, 0);
+      tracker.emit({
+        event: 'source_delivery',
+        ts: new Date().toISOString(),
+        component: meta.name,
+        fileCount: allFiles.length,
+        totalBytes,
+        depCount: dependencies.length,
+        depNames: dependencies.map(d => d.name),
+      });
+
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      };
+    })
+  );
+}
