@@ -6,7 +6,7 @@
  * Env:   PROTOLAB_ROOT (default: ../protoLab)
  */
 
-import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
 
 const PROTOLAB_ROOT = resolve(process.env.PROTOLAB_ROOT ?? join(__dirname, '../../protoLab'));
@@ -121,3 +121,42 @@ writeFileSync(outPath, json, 'utf-8');
 const sizeMB = (Buffer.byteLength(json) / (1024 * 1024)).toFixed(2);
 console.log(`\nBundle written to: ${outPath}`);
 console.log(`Size: ${sizeMB} MB`);
+
+// ── 6. Write static source files to public/source/ ──────────────────
+// Next.js serves public/ as static files. These get CDN-cached on Vercel.
+// Tool responses return URLs to these files instead of inlining content.
+
+const sourceDir = join(__dirname, '../public/source');
+
+// Clean previous output
+if (existsSync(sourceDir)) {
+  rmSync(sourceDir, { recursive: true });
+}
+
+let staticFileCount = 0;
+
+// Write tokens.css at root
+const tokensOutPath = join(sourceDir, 'tokens.css');
+mkdirSync(join(sourceDir), { recursive: true });
+writeFileSync(tokensOutPath, tokens.content, 'utf-8');
+staticFileCount++;
+
+// Write utils.ts at root
+const utilOutPath = join(sourceDir, 'utils.ts');
+writeFileSync(utilOutPath, utility.content, 'utf-8');
+staticFileCount++;
+
+// Write component source files: design-system/{layer}/{Component}/file → {layer}/{Component}/file
+for (const files of Object.values(sources)) {
+  for (const file of files) {
+    // Strip "design-system/" prefix for shorter static paths
+    const staticPath = file.path.replace(/^design-system\//, '');
+    const fullOutPath = join(sourceDir, staticPath);
+    const dir = join(fullOutPath, '..');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(fullOutPath, file.content, 'utf-8');
+    staticFileCount++;
+  }
+}
+
+console.log(`\nStatic source files: ${staticFileCount} files written to public/source/`);

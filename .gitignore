@@ -30,3 +30,6 @@ next-env.d.ts
 
 # Note: data/bundle.json is intentionally committed
 package-lock.json
+
+# Generated static source files (built from bundle script)
+public/source/

@@ -5,6 +5,24 @@ import type { SourceReader, SourceFile } from '../data/source-reader';
 import type { DependencyResolver } from '../data/dependency-resolver';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
+import { getSourceBaseUrl } from '../data/base-url';
+
+/** Convert a bundle path like "design-system/2-utilities/Stack/Stack.tsx" to a static URL path */
+function toStaticPath(bundlePath: string): string {
+  return bundlePath.replace(/^design-system\//, '');
+}
+
+interface FileRef {
+  path: string;
+  url: string;
+}
+
+function filesToRefs(files: SourceFile[], baseUrl: string): FileRef[] {
+  return files.map(f => {
+    const staticPath = toStaticPath(f.path);
+    return { path: staticPath, url: `${baseUrl}/${staticPath}` };
+  });
+}
 
 export function registerGetSource(
   server: McpServer,
@@ -15,7 +33,7 @@ export function registerGetSource(
 ) {
   server.tool(
     'get_component_source',
-    'Get source files (TSX, CSS modules, types) for a component and optionally all its transitive dependencies — ready to copy into a project',
+    'Get source files (TSX, CSS modules, types) for a component and optionally all its transitive dependencies — ready to copy into a project. Default "urls" mode returns lightweight file URLs (~1-2KB) instead of inline content (~100KB+). Use "inline" mode only if your client cannot fetch URLs.',
     {
       name: z.string().describe('Component name (e.g., "Button", "DataTable")'),
       includeDependencies: z
@@ -23,8 +41,13 @@ export function registerGetSource(
         .optional()
         .default(true)
         .describe('Include transitive dependency source files (default: true)'),
+      mode: z
+        .enum(['urls', 'inline'])
+        .optional()
+        .default('urls')
+        .describe('Response mode: "urls" returns file URLs (default, ~1-2KB), "inline" returns full file contents (~100KB+)'),
     },
-    withTracking(tracker, 'get_component_source', server, async ({ name, includeDependencies }) => {
+    withTracking(tracker, 'get_component_source', server, async ({ name, includeDependencies, mode }) => {
       const meta = registry.getComponent(name);
       if (!meta) {
         const suggestions = registry.searchComponents(name).slice(0, 5);
@@ -79,16 +102,7 @@ export function registerGetSource(
         // utils.ts not found — skip
       }
 
-      const result = {
-        component: meta.name,
-        layer: meta.layer,
-        import: `import { ${meta.name} } from '${meta.imports}';`,
-        files: componentFiles,
-        ...(dependencies.length > 0 && { dependencies }),
-        infrastructure,
-      };
-
-      // Semantic event
+      // Semantic event (same for both modes)
       const allFiles = [
         ...componentFiles,
         ...dependencies.flatMap(d => d.files),
@@ -104,6 +118,45 @@ export function registerGetSource(
         depCount: dependencies.length,
         depNames: dependencies.map(d => d.name),
       });
+
+      // ── Inline mode: return full file contents (legacy behavior) ───
+      if (mode === 'inline') {
+        const result = {
+          component: meta.name,
+          layer: meta.layer,
+          mode: 'inline' as const,
+          import: `import { ${meta.name} } from '${meta.imports}';`,
+          files: componentFiles,
+          ...(dependencies.length > 0 && { dependencies }),
+          infrastructure,
+        };
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // ── URLs mode (default): return lightweight file references ────
+      const baseUrl = getSourceBaseUrl();
+
+      const result = {
+        component: meta.name,
+        layer: meta.layer,
+        mode: 'urls' as const,
+        import: `import { ${meta.name} } from '${meta.imports}';`,
+        baseUrl,
+        files: filesToRefs(componentFiles, baseUrl),
+        ...(dependencies.length > 0 && {
+          dependencies: dependencies.map(d => ({
+            name: d.name,
+            layer: d.layer,
+            files: filesToRefs(d.files, baseUrl),
+          })),
+        }),
+        infrastructure: {
+          tokens: `${baseUrl}/tokens.css`,
+          utility: `${baseUrl}/utils.ts`,
+        },
+      };
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],

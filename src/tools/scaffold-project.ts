@@ -5,6 +5,7 @@ import type { SourceReader, SourceFile } from '../data/source-reader';
 import type { DependencyResolver } from '../data/dependency-resolver';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
+import { getSourceBaseUrl } from '../data/base-url';
 
 // ── Layer directory names ────────────────────────────────────────────
 const LAYER_DIR: Record<number, string> = {
@@ -135,30 +136,16 @@ img, svg { display: block; max-width: 100%; }
 
 // ── Barrel export generation ─────────────────────────────────────────
 
-/**
- * Build a per-component barrel file (e.g. `Button/index.ts`) that
- * re-exports from the component's main .tsx file.
- *
- * We mirror the existing protoLab convention: each component directory
- * has an index.ts that re-exports from `./ComponentName`.
- */
 function componentBarrel(componentName: string): string {
   return `export { ${componentName} } from './${componentName}';\n`;
 }
 
-/**
- * Build a layer barrel (e.g. `3-primitives/index.ts`) that re-exports
- * all included components in that layer.
- */
 function layerBarrel(componentNames: string[]): string {
   return componentNames
     .map((name) => `export { ${name} } from './${name}';`)
     .join('\n') + '\n';
 }
 
-/**
- * Build the main design-system barrel that re-exports from each layer barrel.
- */
 function mainBarrel(layerComponents: Map<number, string[]>): string {
   const lines: string[] = [];
   for (const layer of [2, 3, 4, 5, 6]) {
@@ -168,6 +155,11 @@ function mainBarrel(layerComponents: Map<number, string[]>): string {
     lines.push(`export { ${names.join(', ')} } from './${dir}';`);
   }
   return lines.join('\n') + '\n';
+}
+
+/** Convert a bundle path like "design-system/2-utilities/Stack/Stack.tsx" to a static URL path */
+function toStaticPath(bundlePath: string): string {
+  return bundlePath.replace(/^design-system\//, '');
 }
 
 // ── Tool registration ────────────────────────────────────────────────
@@ -181,7 +173,7 @@ export function registerScaffoldProject(
 ) {
   server.tool(
     'scaffold_project',
-    'Generate a complete, ready-to-run Vite + React + TypeScript project with the specified Ink Design System components. Returns all files needed — the AI writes them to disk, user runs npm install && npm run dev.',
+    'Generate a complete, ready-to-run Vite + React + TypeScript project with the specified Ink Design System components. Default "urls" mode returns lightweight file URLs for source code (~5KB) instead of inline content (~200KB+). Use "inline" mode only if your client cannot fetch URLs.',
     {
       projectName: z
         .string()
@@ -191,8 +183,13 @@ export function registerScaffoldProject(
         .describe(
           'Component names to include, e.g. ["Button", "Input", "DocuSignShell"]. Transitive dependencies are resolved automatically.'
         ),
+      mode: z
+        .enum(['urls', 'inline'])
+        .optional()
+        .default('urls')
+        .describe('Response mode: "urls" returns file URLs for source code (default, ~5KB), "inline" returns full file contents (~200KB+)'),
     },
-    withTracking(tracker, 'scaffold_project', server, async ({ projectName, components }) => {
+    withTracking(tracker, 'scaffold_project', server, async ({ projectName, components, mode }) => {
       // ── 1. Resolve & validate components ───────────────────────────
       const notFound: string[] = [];
       const allResolved = new Map<string, { name: string; layer: number }>();
@@ -204,7 +201,6 @@ export function registerScaffoldProject(
           continue;
         }
 
-        // Resolve transitive dependencies (includes the component itself)
         const deps = resolver.resolve(meta.name);
         for (const dep of deps) {
           if (!allResolved.has(dep.name)) {
@@ -234,80 +230,47 @@ export function registerScaffoldProject(
         };
       }
 
-      // ── 2. Collect source files ────────────────────────────────────
-      const files: Record<string, string> = {};
-      const seenPaths = new Set<string>();
-
-      // Group components by layer for barrel generation
+      // ── 2. Group components by layer for barrel generation ──────────
       const layerComponents = new Map<number, string[]>();
-
       for (const { name, layer } of allResolved.values()) {
-        // Track for barrel exports
         const layerList = layerComponents.get(layer) ?? [];
         layerList.push(name);
         layerComponents.set(layer, layerList);
-
-        // Get component source files
-        const componentFiles = sourceReader.getComponentFiles(name, layer);
-        for (const file of componentFiles) {
-          const destPath = `src/${file.path}`;
-          if (!seenPaths.has(destPath)) {
-            seenPaths.add(destPath);
-            files[destPath] = file.content;
-          }
-        }
-
-        // Generate per-component barrel (index.ts)
-        const layerDir = LAYER_DIR[layer];
-        const barrelPath = `src/design-system/${layerDir}/${name}/index.ts`;
-        if (!seenPaths.has(barrelPath)) {
-          seenPaths.add(barrelPath);
-          files[barrelPath] = componentBarrel(name);
-        }
       }
 
-      // ── 3. Collect infrastructure ──────────────────────────────────
-      try {
-        const tokens = sourceReader.getTokens();
-        files[`src/${tokens.path}`] = tokens.content;
-      } catch {
-        // tokens.css not found — skip
-      }
-
-      try {
-        const utils = sourceReader.getUtility();
-        files[`src/${utils.path}`] = utils.content;
-      } catch {
-        // utils.ts not found — skip
-      }
-
-      // ── 4. Generate barrel exports ─────────────────────────────────
-      // Sort component names within each layer for deterministic output
+      // Sort for deterministic output
       for (const [layer, names] of layerComponents) {
         layerComponents.set(layer, names.sort());
       }
 
-      // Layer barrels
-      for (const [layer, names] of layerComponents) {
-        const dir = LAYER_DIR[layer];
-        files[`src/design-system/${dir}/index.ts`] = layerBarrel(names);
+      // ── 3. Generate barrel exports ─────────────────────────────────
+      const barrelFiles: Record<string, string> = {};
+
+      for (const { name, layer } of allResolved.values()) {
+        const layerDir = LAYER_DIR[layer];
+        const barrelPath = `src/design-system/${layerDir}/${name}/index.ts`;
+        barrelFiles[barrelPath] = componentBarrel(name);
       }
 
-      // Main barrel
-      files['src/design-system/index.ts'] = mainBarrel(layerComponents);
+      for (const [layer, names] of layerComponents) {
+        const dir = LAYER_DIR[layer];
+        barrelFiles[`src/design-system/${dir}/index.ts`] = layerBarrel(names);
+      }
 
-      // ── 5. Generate boilerplate ────────────────────────────────────
-      files['package.json'] = packageJson(projectName);
-      files['vite.config.ts'] = VITE_CONFIG;
-      files['tsconfig.json'] = TSCONFIG;
-      files['index.html'] = indexHtml(projectName);
-      files['src/main.tsx'] = MAIN_TSX;
-      files['src/App.tsx'] = APP_TSX;
-      files['src/index.css'] = INDEX_CSS;
+      barrelFiles['src/design-system/index.ts'] = mainBarrel(layerComponents);
 
-      // ── 6. Build result ────────────────────────────────────────────
+      // ── 4. Generate boilerplate ────────────────────────────────────
+      const boilerplateFiles: Record<string, string> = {
+        'package.json': packageJson(projectName),
+        'vite.config.ts': VITE_CONFIG,
+        'tsconfig.json': TSCONFIG,
+        'index.html': indexHtml(projectName),
+        'src/main.tsx': MAIN_TSX,
+        'src/App.tsx': APP_TSX,
+        'src/index.css': INDEX_CSS,
+      };
+
       const componentCount = allResolved.size;
-      const totalFiles = Object.keys(files).length;
       const componentNames = [...allResolved.values()].map((c) => c.name).sort();
 
       // Semantic event
@@ -319,20 +282,99 @@ export function registerScaffoldProject(
         topMatches: componentNames,
       });
 
+      // ── Inline mode: return full file contents (legacy behavior) ───
+      if (mode === 'inline') {
+        const files: Record<string, string> = {};
+        const seenPaths = new Set<string>();
+
+        for (const { name, layer } of allResolved.values()) {
+          const componentFiles = sourceReader.getComponentFiles(name, layer);
+          for (const file of componentFiles) {
+            const destPath = `src/${file.path}`;
+            if (!seenPaths.has(destPath)) {
+              seenPaths.add(destPath);
+              files[destPath] = file.content;
+            }
+          }
+        }
+
+        try {
+          const tokens = sourceReader.getTokens();
+          files[`src/${tokens.path}`] = tokens.content;
+        } catch { /* skip */ }
+
+        try {
+          const utils = sourceReader.getUtility();
+          files[`src/${utils.path}`] = utils.content;
+        } catch { /* skip */ }
+
+        Object.assign(files, barrelFiles, boilerplateFiles);
+
+        const result = {
+          projectName,
+          mode: 'inline' as const,
+          totalFiles: Object.keys(files).length,
+          componentCount,
+          components: componentNames,
+          ...(notFound.length > 0 && { notFound }),
+          instructions: [
+            `1. Write all files to a '${projectName}' directory`,
+            `2. cd ${projectName} && npm install`,
+            '3. npm run dev',
+            '4. Write your prototype in src/App.tsx',
+            `5. Import components from '@/design-system'`,
+          ].join('\n'),
+          files,
+        };
+
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      // ── URLs mode (default): return lightweight file references ────
+      const baseUrl = getSourceBaseUrl();
+
+      // Build source file URL list (component files + infrastructure)
+      const sourceFiles: { destPath: string; url: string }[] = [];
+      const seenPaths = new Set<string>();
+
+      for (const { name, layer } of allResolved.values()) {
+        const componentFiles = sourceReader.getComponentFiles(name, layer);
+        for (const file of componentFiles) {
+          const destPath = `src/${file.path}`;
+          if (!seenPaths.has(destPath)) {
+            seenPaths.add(destPath);
+            const staticPath = toStaticPath(file.path);
+            sourceFiles.push({ destPath, url: `${baseUrl}/${staticPath}` });
+          }
+        }
+      }
+
       const result = {
         projectName,
-        totalFiles,
+        mode: 'urls' as const,
+        baseUrl,
+        totalFiles: Object.keys(boilerplateFiles).length + Object.keys(barrelFiles).length + sourceFiles.length + 2, // +2 for tokens + utils
         componentCount,
         components: componentNames,
         ...(notFound.length > 0 && { notFound }),
         instructions: [
-          `1. Write all files to a '${projectName}' directory`,
-          `2. cd ${projectName} && npm install`,
-          '3. npm run dev',
-          '4. Write your prototype in src/App.tsx',
-          `5. Import components from '@/design-system'`,
+          `1. Create a '${projectName}' directory`,
+          '2. Write the "boilerplate" and "barrels" files directly (content is included)',
+          '3. For each entry in "sourceFiles", fetch the URL and write to the destPath',
+          '4. Fetch the infrastructure URLs and write tokens.css + utils.ts',
+          `5. cd ${projectName} && npm install && npm run dev`,
+          '6. Write your prototype in src/App.tsx',
+          `7. Import components from '@/design-system'`,
         ].join('\n'),
-        files,
+        boilerplate: boilerplateFiles,
+        barrels: barrelFiles,
+        sourceFiles,
+        infrastructure: {
+          tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
+          utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
+        },
       };
 
       return {
