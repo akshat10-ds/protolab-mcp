@@ -71,6 +71,13 @@ export interface ErrorEvent extends EventBase {
   message: string;
 }
 
+export interface ValidationEvent extends EventBase {
+  event: 'validation';
+  componentsChecked: number;
+  issueCount: number;
+  errorCount: number;
+}
+
 // ── Union type ──────────────────────────────────────────────────────
 
 export type AnalyticsEvent =
@@ -81,4 +88,5 @@ export type AnalyticsEvent =
   | TokenAccessEvent
   | ComponentListEvent
   | SessionStartEvent
-  | ErrorEvent;
+  | ErrorEvent
+  | ValidationEvent;

@@ -15,6 +15,7 @@ import { registerGetTokens } from '@/src/tools/get-tokens';
 import { registerUsageStats } from '@/src/tools/usage-stats';
 import { registerMapElements } from '@/src/tools/map-elements';
 import { registerScaffoldProject } from '@/src/tools/scaffold-project';
+import { registerValidateUsage } from '@/src/tools/validate-usage';
 
 import { registerBuildPrototypePrompt } from '@/src/prompts/build-prototype';
 import { registerFigmaToCodePrompt } from '@/src/prompts/figma-to-code';
@@ -34,7 +35,7 @@ const handler = createMcpHandler(
     // Create a per-request tracker (no-op in serverless)
     const tracker = new Tracker();
 
-    // Register tools (8 total)
+    // Register tools (9 total)
     registerListComponents(server, registry, tracker);
     registerGetComponent(server, registry, resolver, tracker);
     registerGetSource(server, registry, sourceReader, resolver, tracker);
@@ -43,6 +44,7 @@ const handler = createMcpHandler(
     registerUsageStats(server, tracker);
     registerMapElements(server, registry, tracker);
     registerScaffoldProject(server, registry, sourceReader, resolver, tracker);
+    registerValidateUsage(server, registry, tracker);
 
     // Register prompts (3 total)
     registerBuildPrototypePrompt(server, registry);
