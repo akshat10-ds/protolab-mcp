@@ -1,3 +1,25 @@
+export interface PropDetail {
+  name: string;
+  type: string;
+  required: boolean;
+  description?: string;
+  default?: string;
+  values?: string[];
+}
+
+export interface PropTypeAlias {
+  name: string;
+  type: 'union' | 'other';
+  values?: string[];
+  raw?: string;
+}
+
+export interface ComponentPropDetails {
+  types: PropTypeAlias[];
+  props: PropDetail[];
+  extends?: string;
+}
+
 export interface ComponentMeta {
   name: string;
   layer: number;
@@ -13,6 +35,7 @@ export interface ComponentMeta {
   sizes?: string[];
   statuses?: string[];
   iconList?: string[];
+  propDetails?: ComponentPropDetails;
 }
 
 interface RegistryData {
@@ -36,10 +59,14 @@ export class Registry {
   private version: string = '';
   private totalComponents: number = 0;
 
-  constructor(data: RegistryData) {
+  constructor(data: RegistryData, propDetails?: Record<string, ComponentPropDetails>) {
     this.version = data.version;
     this.totalComponents = data.totalComponents;
     for (const [name, meta] of Object.entries(data.components)) {
+      // Merge prop details from extraction if available
+      if (propDetails?.[name]) {
+        meta.propDetails = propDetails[name];
+      }
       this.components.set(name, meta);
     }
   }

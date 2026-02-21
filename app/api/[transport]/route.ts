@@ -21,7 +21,7 @@ import { registerFigmaToCodePrompt } from '@/src/prompts/figma-to-code';
 import { registerFindComponentPrompt } from '@/src/prompts/find-component';
 
 // Initialize data layer from bundle (module-level, shared across requests)
-const registry = new Registry(bundleData.registry);
+const registry = new Registry(bundleData.registry, (bundleData as Record<string, unknown>).propDetails as Record<string, import('@/src/data/registry').ComponentPropDetails> | undefined);
 const sourceReader = new SourceReader({
   sources: bundleData.sources,
   tokens: bundleData.tokens,

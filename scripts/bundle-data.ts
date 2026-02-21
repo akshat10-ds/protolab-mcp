@@ -12,6 +12,7 @@
 
 import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
+import { extractAllProps, type ComponentPropDetails } from './extract-props';
 
 interface SourceFile {
   path: string;
@@ -23,6 +24,7 @@ interface BundleData {
   sources: Record<string, SourceFile[]>;
   tokens: SourceFile;
   utility: SourceFile;
+  propDetails: Record<string, ComponentPropDetails>;
 }
 
 // ── Detect mode ──────────────────────────────────────────────────────
@@ -149,7 +151,13 @@ function buildBundleFromSource(): BundleData {
   };
   console.log(`Utility: ${utility.content.length} bytes`);
 
-  return { registry, sources, tokens, utility };
+  // Prop details — extract structured prop metadata from TypeScript source
+  const propDetails = extractAllProps(sources);
+  const extracted = Object.keys(propDetails).length;
+  const totalProps = Object.values(propDetails).reduce((s, d) => s + d.props.length, 0);
+  console.log(`Prop details: ${totalProps} props from ${extracted} components`);
+
+  return { registry, sources, tokens, utility, propDetails };
 }
 
 function writeStaticFiles(data: BundleData): void {

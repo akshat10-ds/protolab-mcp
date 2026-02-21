@@ -63,6 +63,11 @@ export function registerGetComponent(
         description: meta.description,
         import: `import { ${meta.name} } from '${meta.imports}';`,
         props: meta.props,
+        ...(meta.propDetails && {
+          propDetails: meta.propDetails.props,
+          ...(meta.propDetails.extends && { extends: meta.propDetails.extends }),
+          ...(meta.propDetails.types.length > 0 && { propTypes: meta.propDetails.types }),
+        }),
         ...(meta.variants && { variants: meta.variants }),
         ...(meta.types && { types: meta.types }),
         ...(meta.sizes && { sizes: meta.sizes }),
