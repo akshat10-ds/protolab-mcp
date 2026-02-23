@@ -49,7 +49,10 @@ export async function createTestClient(): Promise<{
   // MCP Server
   const mcpServer = new McpServer(
     { name: 'ink-design-system', version: '1.0.0' },
-    { capabilities: { tools: {}, resources: {}, prompts: {} } },
+    {
+      instructions: 'Ink Design System — 63 components across 6 layers.',
+      capabilities: { tools: {}, resources: {}, prompts: {} },
+    },
   );
 
   // Register all 9 tools
