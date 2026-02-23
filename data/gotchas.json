@@ -1,0 +1,42 @@
+{
+  "Card": [
+    "NO padding prop. Use <Card.Body>, <Card.Header>, <Card.Footer> sub-components. Use noPadding={true} to remove Card.Body default padding.",
+    "Do NOT wrap DataTable in a Card — tables should be bare (Docusign convention)."
+  ],
+  "Button": [
+    "Prefer size=\"small\" or \"medium\" for standard UI. large/xlarge exist but are rare in Docusign patterns.",
+    "For icon-only buttons, use IconButton instead."
+  ],
+  "IconButton": [
+    "Use 'variant' prop (not 'kind'). Only size=\"small\" | \"medium\".",
+    "Always provide aria-label for accessibility."
+  ],
+  "ComboButton": [
+    "variant=\"tertiary\" is ALWAYS icon-only — children text is ignored."
+  ],
+  "DataTable": [
+    "Data-driven: NO children. Pass columns={DataTableColumn[]} and data={T[]}.",
+    "Column cell rendering: use cell(value, row) function in column definition.",
+    "For row actions: use renderRowActions={(row) => <Inline>...</Inline>} prop."
+  ],
+  "GlobalNav": [
+    "Config-driven: pass as props object to DocuSignShell.globalNav slot, NOT as JSX children.",
+    "Standard items: Home, Agreements, Templates, Reports, Admin."
+  ],
+  "LocalNav": [
+    "Config-driven: pass as props object to DocuSignShell.localNav slot, NOT as JSX children.",
+    "Use headerLabel + headerMenuItems for the 'Start' button dropdown."
+  ],
+  "DocuSignShell": [
+    "GlobalNav and LocalNav go in slot props: globalNav={{...}} localNav={{...}}.",
+    "Children render as the main content area."
+  ],
+  "AgreementTableView": [
+    "Use slot props: pageHeader={...}, filterBar={...}, banner={...}.",
+    "Children render as the main content (usually DataTable)."
+  ],
+  "FilterBar": [
+    "Config-driven via slot props: search, quickActions, filters, viewSelector.",
+    "NOT composed from Inline+SearchInput — use the FilterBar component directly."
+  ]
+}

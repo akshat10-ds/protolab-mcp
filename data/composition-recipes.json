@@ -1,0 +1,29 @@
+{
+  "recipes": [
+    {
+      "name": "ActionBar",
+      "keywords": ["action bar", "toolbar", "actions above table", "search bar", "filter bar"],
+      "composition": "Use FilterBar (L5) directly — it has search, quickActions, filters, and viewSelector slot props. Do NOT compose manually from Inline+SearchInput."
+    },
+    {
+      "name": "DetailHeader",
+      "keywords": ["detail header", "entity header", "page header with status", "document header"],
+      "composition": "Stack(gap=100) > Badge (status), Heading level=1, Text variant=\"secondary\" (metadata), Inline > action Buttons"
+    },
+    {
+      "name": "FormSection",
+      "keywords": ["form section", "settings section", "form group", "form card"],
+      "composition": "Card > Card.Header (section title as Heading level=2) + Card.Body > Stack(gap=200) > form fields (Input, Select, Toggle). Save/Cancel buttons in Inline at bottom."
+    },
+    {
+      "name": "StatCard",
+      "keywords": ["stat card", "metric", "kpi", "stat widget", "number card"],
+      "composition": "Card > Card.Body > Stack(gap=100) > Text size=\"sm\" variant=\"secondary\" (label), Heading level={2} (value). Optional: Badge or trend indicator."
+    },
+    {
+      "name": "EmptyState",
+      "keywords": ["empty state", "no data", "no results", "placeholder", "zero state"],
+      "composition": "Stack(align=center, gap=200) > Icon (large, 48px), Heading level={3} (title), Text variant=\"secondary\" (description), Button (primary action)"
+    }
+  ]
+}

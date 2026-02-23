@@ -459,7 +459,11 @@ function TerminalHero({ theme, onToggleTheme }: { theme: 'dark' | 'light'; onTog
             <span style={{ ...st.dot, background: '#FFBD2E' }} />
             <span style={{ ...st.dot, background: '#28CA41' }} />
           </div>
-          <span style={st.titleText}>protolab — zsh — 80×24</span>
+          <div style={st.titleCenter}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/docusign-logo.svg" alt="Docusign" style={st.titleLogo} />
+            <span style={st.titleText}>protolab — zsh — 80×24</span>
+          </div>
           <button
             className="theme-toggle"
             onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
@@ -636,7 +640,7 @@ function ExamplesSection() {
 function AboutSection() {
   const items = [
     { key: 'components', val: 'Inspired by Ink, optimized for prototyping' },
-    { key: 'layouts', val: 'Knows DocuSign page composition patterns' },
+    { key: 'layouts', val: 'Knows Docusign page composition patterns' },
     { key: 'iteration', val: '"Move the filters" → rebuilt in seconds' },
   ];
 
@@ -722,8 +726,19 @@ const st: Record<string, React.CSSProperties> = {
   },
   dots: { display: 'flex', gap: 8, marginRight: 16 },
   dot: { width: 12, height: 12, borderRadius: '50%' },
-  titleText: {
+  titleCenter: {
     flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  titleLogo: {
+    height: 14,
+    opacity: 0.6,
+    filter: 'var(--t-logo-filter, none)',
+  },
+  titleText: {
     textAlign: 'center' as const,
     fontSize: 12,
     color: 'var(--t-text-dim)',

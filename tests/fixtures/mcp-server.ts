@@ -8,6 +8,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import bundleData from '@/data/bundle.json';
+import gotchasData from '@/data/gotchas.json';
+import pageTemplatesData from '@/data/page-templates.json';
 import { Registry, type ComponentPropDetails } from '@/src/data/registry';
 import { SourceReader } from '@/src/data/source-reader';
 import { DependencyResolver } from '@/src/data/dependency-resolver';
@@ -37,6 +39,7 @@ export async function createTestClient(): Promise<{
     (bundleData as Record<string, unknown>).propDetails as
       | Record<string, ComponentPropDetails>
       | undefined,
+    gotchasData as Record<string, string[]>,
   );
   const sourceReader = new SourceReader({
     sources: bundleData.sources,
@@ -68,7 +71,7 @@ export async function createTestClient(): Promise<{
   registerFigmaToCodePrompt(mcpServer, registry);
   registerFindComponentPrompt(mcpServer, registry);
 
-  // Register 2 resources (same as route.ts lines 55-89)
+  // Register 3 resources (same as route.ts)
   mcpServer.resource('component-catalog', 'ink://catalog', async (uri) => {
     const components = registry.listComponents();
     const catalog = {
@@ -104,6 +107,16 @@ export async function createTestClient(): Promise<{
       ],
     };
   });
+
+  mcpServer.resource('page-templates', 'ink://page-templates', async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: 'application/json',
+        text: JSON.stringify(pageTemplatesData),
+      },
+    ],
+  }));
 
   // Wire up InMemoryTransport
   const [clientTransport, serverTransport] =

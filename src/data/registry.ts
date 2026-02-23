@@ -51,6 +51,8 @@ export interface ComponentMeta {
   aliases?: string[];
   propDetails?: ComponentPropDetails;
   composition?: CompositionRule;
+  gotchas?: string[];
+  sourceComponent?: string;
 }
 
 interface RegistryData {
@@ -92,13 +94,17 @@ export class Registry {
   private listByLayerCache: Map<number, ComponentMeta[]> = new Map();
   private statsCache: { version: string; totalComponents: number; byLayer: Record<string, number> } | null = null;
 
-  constructor(data: RegistryData, propDetails?: Record<string, ComponentPropDetails>) {
+  constructor(data: RegistryData, propDetails?: Record<string, ComponentPropDetails>, gotchas?: Record<string, string[]>) {
     this.version = data.version;
     this.totalComponents = data.totalComponents;
     for (const [name, meta] of Object.entries(data.components)) {
       // Merge prop details from extraction if available
       if (propDetails?.[name]) {
         meta.propDetails = propDetails[name];
+      }
+      // Merge gotchas from curated data
+      if (gotchas?.[name]) {
+        meta.gotchas = gotchas[name];
       }
       this.components.set(name, meta);
       this.lowercaseMap.set(name.toLowerCase(), meta);

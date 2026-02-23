@@ -61,6 +61,13 @@ export function apiCard(meta: ComponentMeta): string {
     }
   }
 
+  // Curated gotchas (common mistakes)
+  if (meta.gotchas && meta.gotchas.length > 0) {
+    for (const g of meta.gotchas) {
+      lines.push(`\u26a0\ufe0f ${g}`);
+    }
+  }
+
   // One example — join all example lines into a single JSX snippet
   if (meta.examples && meta.examples.length > 0) {
     const joined = meta.examples.join(' ').replace(/\s{2,}/g, ' ').trim();
@@ -167,4 +174,106 @@ export function tokenQuickRef(): string {
 - Form field gap: \`gap: var(--ink-spacing-200)\`
 
 NEVER hardcode colors or spacing — always use \`var(--ink-*)\` tokens.`;
+}
+
+/**
+ * Spacing cheat sheet — common spacing between component pairs.
+ * Always included in build_prototype prompt. ~400 chars.
+ */
+export function spacingCheatSheet(): string {
+  return `## Spacing Between Components
+GlobalNav → Content: var(--ink-spacing-400) (32px)
+PageHeader → FilterBar/Banner: var(--ink-spacing-200) (16px)
+FilterBar → Table: var(--ink-spacing-300) (24px)
+Section → Section: var(--ink-spacing-400) (32px)
+Form field → Form field: var(--ink-spacing-200) (16px)
+Card → Card (in grid): var(--ink-spacing-300) (24px)`;
+}
+
+/**
+ * Visual hierarchy rules — when to use Cards, badge placement, typography.
+ * Always included in build_prototype prompt. ~500 chars.
+ */
+export function visualHierarchyRules(): string {
+  return `## Visual Hierarchy
+
+**Cards:** Use for dashboard widgets, form sections, stat blocks. NOT for tables or full-width content.
+
+**Status badges:**
+- List pages: inline with row data
+- Detail pages: above the title (Badge then Heading in a Stack)
+
+**Typography:**
+- Page title: Heading level={1} (32px)
+- Section: Heading level={2} (24px)
+- Card title: Heading level={3} (20px)
+- Body: Text (16px), Labels: Text size="sm" (14px)
+
+**Border radius:** var(--ink-radius-sm) (4px) universally.`;
+}
+
+/**
+ * Layout preset section — rendered when a preset matches the user's description.
+ * Includes component tree, spacing, rules, code sketch, and optional showcase config.
+ */
+export interface LayoutPreset {
+  id: string;
+  title: string;
+  keywords: string[];
+  componentTree: string;
+  components: string[];
+  spacingStack: Array<{ from: string; to: string; token: string; px: number }>;
+  rules: string[];
+  codeSketch: string;
+  showcaseConfig?: {
+    globalNav: string;
+    localNav?: string;
+  };
+}
+
+export function layoutPresetSection(preset: LayoutPreset): string {
+  const lines: string[] = [];
+
+  lines.push(`## Layout Recipe: ${preset.title}`);
+  lines.push('');
+  lines.push('Component Tree:');
+  lines.push('```');
+  lines.push(preset.componentTree);
+  lines.push('```');
+  lines.push('');
+
+  // Spacing
+  lines.push('Spacing:');
+  for (const s of preset.spacingStack) {
+    lines.push(`- ${s.from} → ${s.to}: ${s.px}px (${s.token})`);
+  }
+  lines.push('');
+
+  // Rules
+  lines.push('Rules:');
+  for (const rule of preset.rules) {
+    lines.push(`- ${rule}`);
+  }
+  lines.push('');
+
+  // Code sketch
+  lines.push('Code Sketch:');
+  lines.push('```tsx');
+  lines.push(preset.codeSketch);
+  lines.push('```');
+
+  // Showcase config
+  if (preset.showcaseConfig) {
+    lines.push('');
+    lines.push('Default Nav Config (use as-is for prototyping):');
+    lines.push('```tsx');
+    lines.push(preset.showcaseConfig.globalNav);
+    if (preset.showcaseConfig.localNav) {
+      lines.push('');
+      lines.push(preset.showcaseConfig.localNav);
+    }
+    lines.push('```');
+  }
+
+  return lines.join('\n');
 }
