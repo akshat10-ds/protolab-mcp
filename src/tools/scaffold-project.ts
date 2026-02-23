@@ -217,14 +217,10 @@ export function registerScaffoldProject(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  error: `No valid components found. Unknown: ${notFound.join(', ')}`,
-                  suggestions: [...new Set(suggestions)],
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                error: `No valid components found. Unknown: ${notFound.join(', ')}`,
+                suggestions: [...new Set(suggestions)],
+              }),
             },
           ],
         };
@@ -328,7 +324,7 @@ export function registerScaffoldProject(
         };
 
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
         };
       }
 
@@ -379,7 +375,7 @@ export function registerScaffoldProject(
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

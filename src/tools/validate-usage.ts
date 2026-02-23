@@ -11,6 +11,11 @@ interface ValidationIssue {
   suggestion?: string;
 }
 
+// Module-level regex constants (avoids recompilation per request)
+const JSX_COMPONENT_RE = /<([A-Z][A-Za-z0-9]*)/g;
+const HARDCODED_COLOR_RE = /(?:color|background|border)(?:-color)?:\s*#[0-9a-fA-F]{3,8}/g;
+const HARDCODED_SPACING_RE = /(?:padding|margin|gap):\s*\d+px/g;
+
 export function registerValidateUsage(
   server: McpServer,
   registry: Registry,
@@ -26,13 +31,11 @@ export function registerValidateUsage(
     },
     withTracking(tracker, 'validate_component_usage', server, async ({ code }) => {
       const issues: ValidationIssue[] = [];
-      const allNames = new Set(registry.getAllNames());
+      const allNames = registry.getAllNamesSet();
 
       // 1. Extract component names used in JSX: <ComponentName or <ComponentName.
-      const jsxPattern = /<([A-Z][A-Za-z0-9]*)/g;
       const usedComponents = new Set<string>();
-      let match;
-      while ((match = jsxPattern.exec(code)) !== null) {
+      for (const match of code.matchAll(JSX_COMPONENT_RE)) {
         usedComponents.add(match[1]);
       }
 
@@ -110,8 +113,7 @@ export function registerValidateUsage(
       }
 
       // 5. Check for hardcoded colors (suggest tokens)
-      const hardcodedColorPattern = /(?:color|background|border)(?:-color)?:\s*#[0-9a-fA-F]{3,8}/g;
-      const hardcodedColors = code.match(hardcodedColorPattern);
+      const hardcodedColors = code.match(HARDCODED_COLOR_RE);
       if (hardcodedColors && hardcodedColors.length > 0) {
         issues.push({
           severity: 'warning',
@@ -122,8 +124,7 @@ export function registerValidateUsage(
       }
 
       // 6. Check for hardcoded pixel spacing (suggest tokens)
-      const hardcodedSpacingPattern = /(?:padding|margin|gap):\s*\d+px/g;
-      const hardcodedSpacing = code.match(hardcodedSpacingPattern);
+      const hardcodedSpacing = code.match(HARDCODED_SPACING_RE);
       if (hardcodedSpacing && hardcodedSpacing.length > 0) {
         issues.push({
           severity: 'warning',
@@ -150,7 +151,7 @@ export function registerValidateUsage(
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(summary, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(summary) }],
       };
     })
   );

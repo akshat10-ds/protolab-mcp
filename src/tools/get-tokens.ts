@@ -137,15 +137,11 @@ export function registerGetTokens(server: McpServer, sourceReader: SourceReader,
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  category: 'guide',
-                  description: 'Semantic guide for the most commonly used Ink design tokens. Use var(--token-name) in CSS.',
-                  guide: TOKEN_GUIDE,
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                category: 'guide',
+                description: 'Semantic guide for the most commonly used Ink design tokens. Use var(--token-name) in CSS.',
+                guide: TOKEN_GUIDE,
+              }),
             },
           ],
         };
@@ -158,15 +154,11 @@ export function registerGetTokens(server: McpServer, sourceReader: SourceReader,
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  category,
-                  guide: TOKEN_GUIDE[category as keyof typeof TOKEN_GUIDE] ?? undefined,
-                  tokens: filtered,
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                category,
+                guide: TOKEN_GUIDE[category as keyof typeof TOKEN_GUIDE] ?? undefined,
+                tokens: filtered,
+              }),
             },
           ],
         };
@@ -179,15 +171,11 @@ export function registerGetTokens(server: McpServer, sourceReader: SourceReader,
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  mode: 'inline',
-                  path: tokens.path,
-                  content: tokens.content,
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                mode: 'inline',
+                path: tokens.path,
+                content: tokens.content,
+              }),
             },
           ],
         };
@@ -199,16 +187,12 @@ export function registerGetTokens(server: McpServer, sourceReader: SourceReader,
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(
-              {
-                mode: 'urls',
-                path: 'tokens.css',
-                url: `${baseUrl}/tokens.css`,
-                hint: 'Fetch this URL to get the full tokens.css (~66KB). Or call with category parameter for filtered inline results.',
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify({
+              mode: 'urls',
+              path: 'tokens.css',
+              url: `${baseUrl}/tokens.css`,
+              hint: 'Fetch this URL to get the full tokens.css (~66KB). Or call with category parameter for filtered inline results.',
+            }),
           },
         ],
       };

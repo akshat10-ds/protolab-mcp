@@ -30,15 +30,11 @@ export function registerSearch(server: McpServer, registry: Registry, tracker: T
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  query,
-                  matches: 0,
-                  message: 'No components matched. Try broader terms or check available components with list_components.',
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                query,
+                matches: 0,
+                message: 'No components matched. Try broader terms or check available components with list_components.',
+              }),
             },
           ],
         };
@@ -59,7 +55,7 @@ export function registerSearch(server: McpServer, registry: Registry, tracker: T
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

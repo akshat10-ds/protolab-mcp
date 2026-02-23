@@ -33,3 +33,6 @@ package-lock.json
 
 # Generated static source files (built from bundle script)
 public/source/
+
+# Test results and benchmark output
+tests/results/

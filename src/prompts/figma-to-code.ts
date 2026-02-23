@@ -1,11 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { Registry } from '../data/registry';
+import { componentIndex, tokenQuickRef } from './format';
 
-export function registerFigmaToCodePrompt(server: McpServer) {
+export function registerFigmaToCodePrompt(server: McpServer, registry: Registry) {
   server.prompt(
     'figma_to_code',
-    'Workflow for converting a Figma design to code using Ink Design System components. Guides element mapping and token translation.',
+    'Workflow for converting a Figma design to code using Ink Design System components. Includes component catalog and token reference for direct mapping.',
     () => {
-      const workflow = `You are converting a Figma design to code using the Ink Design System. Follow these steps:
+      const workflow = `You are converting a Figma design to code using the Ink Design System.
 
 ## Step 1: Extract Design Data (using Figma MCP tools)
 Use the Figma MCP server tools to extract design data:
@@ -16,48 +18,42 @@ Use the Figma MCP server tools to extract design data:
 
 Tip: Target specific child nodes, not large parent frames.
 
-## Step 2: Identify UI Elements
-From the Figma extraction, make a list of every UI element:
-- Buttons, inputs, dropdowns, checkboxes
-- Cards, tables, lists
-- Navigation (sidebar, top bar, tabs, breadcrumbs)
-- Layout structure (vertical stacks, grids, containers)
-- Feedback (modals, alerts, banners, tooltips)
+## Step 2: Identify and Map UI Elements
 
-## Step 3: Map Elements to Ink Components
-For EACH element, call \`search_components\` to find the matching Ink component.
-Or use \`map_ui_elements\` with all elements at once for a batch mapping.
+From the Figma extraction, identify every UI element and map to Ink components.
 
 Common mappings:
-| Figma Element | Search Query | Typical Match |
-|---|---|---|
-| Auto Layout Vertical | "stack vertical" | Stack |
-| Auto Layout Horizontal | "inline horizontal" | Inline or Stack |
-| Grid Layout | "grid columns" | Grid |
-| Text Input | "input text field" | Input |
-| Dropdown/Select | "select dropdown" | Select or ComboBox |
-| Toggle | "switch toggle" | Switch |
-| Sidebar Nav | "navigation sidebar" | LocalNav |
-| Top Nav Bar | "navigation global" | GlobalNav |
-| Data Table | "table data" | Table or DataTable |
-| Dialog/Popup | "modal dialog" | Modal |
-| Card/Panel | "card container" | Card |
+| Figma Element | Ink Component |
+|---|---|
+| Auto Layout Vertical | Stack |
+| Auto Layout Horizontal | Inline or Stack (direction="horizontal") |
+| Grid Layout | Grid |
+| Text Input | Input |
+| Dropdown/Select | Select or ComboBox |
+| Toggle/Switch | Switch |
+| Sidebar Nav | LocalNav |
+| Top Nav Bar | GlobalNav |
+| Data Table | Table or DataTable |
+| Dialog/Popup | Modal |
+| Card/Panel | Card |
+| Tabs | Tabs (data-driven: items prop, NOT children) |
 
-Call \`get_component\` for each match to confirm props and get examples.
+Use \`search_components("keyword")\` if an element doesn't match the table above.
+For full component details, call \`get_component("Name")\`.
 
-## Step 4: Map Tokens
-Call \`get_design_tokens({ category: "color" })\` and map Figma values:
-- Figma hex colors → closest \`--ink-*\` CSS variable
-- Figma spacing (px) → \`--ink-spacing-*\` tokens
-- Figma border radius → \`--ink-radius-*\` tokens
-- Figma font sizes → \`--ink-font-size-*\` tokens
+${componentIndex(registry)}
 
-Spacing guide:
-  4px → --ink-spacing-50     8px → --ink-spacing-100
-  12px → --ink-spacing-150   16px → --ink-spacing-200
-  24px → --ink-spacing-300   32px → --ink-spacing-400
+## Step 3: Map Design Tokens
 
-## Step 5: Present Mapping Plan
+${tokenQuickRef()}
+
+**Mapping Figma values:**
+- Figma hex colors → closest \`var(--ink-*)\` CSS variable
+- Figma spacing (px) → \`var(--ink-spacing-*)\` token
+- Figma border radius → \`var(--ink-radius-*)\` token
+- Figma font sizes → \`var(--ink-font-size-*)\` token
+
+## Step 4: Present Mapping Plan
 Before writing code, present:
 - Each Figma element → Ink component mapping
 - Token mappings (Figma value → Ink token)
@@ -66,13 +62,13 @@ Before writing code, present:
 
 Get user confirmation before proceeding.
 
-## Step 6: Generate Code
+## Step 5: Generate Code
 - Import all components from '@/design-system'
 - Follow layer hierarchy (outermost layout first, then work inward)
 - Use design token CSS variables for all styling
 - Add comments linking back to Figma elements
 
-## Step 7: Get Source (if needed)
+## Step 6: Get Source (if needed)
 If the consuming project needs the actual component source files:
 Call \`get_component_source\` for each component used, with \`includeDependencies: true\`.`;
 

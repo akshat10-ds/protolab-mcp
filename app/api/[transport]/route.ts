@@ -48,7 +48,7 @@ const handler = createMcpHandler(
 
     // Register prompts (3 total)
     registerBuildPrototypePrompt(server, registry);
-    registerFigmaToCodePrompt(server);
+    registerFigmaToCodePrompt(server, registry);
     registerFindComponentPrompt(server, registry);
 
     // Register resources (2 total)
@@ -69,7 +69,7 @@ const handler = createMcpHandler(
           {
             uri: uri.href,
             mimeType: 'application/json',
-            text: JSON.stringify(catalog, null, 2),
+            text: JSON.stringify(catalog),
           },
         ],
       };

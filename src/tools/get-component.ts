@@ -39,14 +39,10 @@ export function registerGetComponent(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  error: `Component "${name}" not found`,
-                  suggestions: suggestions.map(s => s.name),
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                error: `Component "${name}" not found`,
+                suggestions: suggestions.map(s => s.name),
+              }),
             },
           ],
         };
@@ -75,7 +71,7 @@ export function registerGetComponent(
           hint: 'Call with detail="full" for propDetails, examples, variants, and more.',
         };
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
         };
       }
 
@@ -111,7 +107,7 @@ export function registerGetComponent(
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

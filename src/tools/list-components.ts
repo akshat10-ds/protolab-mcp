@@ -42,7 +42,7 @@ export function registerListComponents(server: McpServer, registry: Registry, tr
       });
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

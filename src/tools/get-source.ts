@@ -55,14 +55,10 @@ export function registerGetSource(
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(
-                {
-                  error: `Component "${name}" not found`,
-                  suggestions: suggestions.map(s => s.name),
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify({
+                error: `Component "${name}" not found`,
+                suggestions: suggestions.map(s => s.name),
+              }),
             },
           ],
         };
@@ -102,25 +98,24 @@ export function registerGetSource(
         // utils.ts not found — skip
       }
 
-      // Semantic event (same for both modes)
-      const allFiles = [
-        ...componentFiles,
-        ...dependencies.flatMap(d => d.files),
-        ...infrastructure,
-      ];
-      const totalBytes = allFiles.reduce((sum, f) => sum + f.content.length, 0);
-      tracker.emit({
-        event: 'source_delivery',
-        ts: new Date().toISOString(),
-        component: meta.name,
-        fileCount: allFiles.length,
-        totalBytes,
-        depCount: dependencies.length,
-        depNames: dependencies.map(d => d.name),
-      });
-
       // ── Inline mode: return full file contents (legacy behavior) ───
       if (mode === 'inline') {
+        // Compute detailed stats only in inline mode (files already loaded)
+        const allFiles = [
+          ...componentFiles,
+          ...dependencies.flatMap(d => d.files),
+          ...infrastructure,
+        ];
+        tracker.emit({
+          event: 'source_delivery',
+          ts: new Date().toISOString(),
+          component: meta.name,
+          fileCount: allFiles.length,
+          totalBytes: allFiles.reduce((sum, f) => sum + f.content.length, 0),
+          depCount: dependencies.length,
+          depNames: dependencies.map(d => d.name),
+        });
+
         const result = {
           component: meta.name,
           layer: meta.layer,
@@ -131,7 +126,7 @@ export function registerGetSource(
           infrastructure,
         };
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
         };
       }
 
@@ -160,7 +155,7 @@ export function registerGetSource(
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

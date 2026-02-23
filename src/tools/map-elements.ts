@@ -4,6 +4,36 @@ import type { Registry } from '../data/registry';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
 
+// Module-level constants (avoids recreation per request)
+const TOKEN_SUGGESTIONS: Record<string, string[]> = {
+  layout: ['spacing', 'color'],
+  navigation: ['color', 'spacing'],
+  form: ['spacing', 'color', 'typography'],
+  input: ['spacing', 'color', 'border-radius'],
+  button: ['color', 'spacing', 'typography'],
+  table: ['spacing', 'color', 'border'],
+  card: ['spacing', 'color', 'border-radius', 'shadow'],
+  modal: ['spacing', 'color', 'shadow', 'border-radius'],
+  text: ['typography', 'color'],
+  icon: ['color'],
+};
+
+function getTokenSuggestions(element: string): string[] {
+  const lower = element.toLowerCase();
+  const suggestions = new Set<string>();
+  for (const [keyword, tokens] of Object.entries(TOKEN_SUGGESTIONS)) {
+    if (lower.includes(keyword)) {
+      for (const t of tokens) suggestions.add(t);
+    }
+  }
+  // Default if nothing matched
+  if (suggestions.size === 0) {
+    suggestions.add('spacing');
+    suggestions.add('color');
+  }
+  return Array.from(suggestions);
+}
+
 export function registerMapElements(server: McpServer, registry: Registry, tracker: Tracker) {
   server.tool(
     'map_ui_elements',
@@ -21,35 +51,6 @@ export function registerMapElements(server: McpServer, registry: Registry, track
         .describe('Include relevant design token suggestions for each element'),
     },
     withTracking(tracker, 'map_ui_elements', server, async ({ elements, includeTokenSuggestions }) => {
-      const TOKEN_SUGGESTIONS: Record<string, string[]> = {
-        layout: ['spacing', 'color'],
-        navigation: ['color', 'spacing'],
-        form: ['spacing', 'color', 'typography'],
-        input: ['spacing', 'color', 'border-radius'],
-        button: ['color', 'spacing', 'typography'],
-        table: ['spacing', 'color', 'border'],
-        card: ['spacing', 'color', 'border-radius', 'shadow'],
-        modal: ['spacing', 'color', 'shadow', 'border-radius'],
-        text: ['typography', 'color'],
-        icon: ['color'],
-      };
-
-      function getTokenSuggestions(element: string): string[] {
-        const lower = element.toLowerCase();
-        const suggestions = new Set<string>();
-        for (const [keyword, tokens] of Object.entries(TOKEN_SUGGESTIONS)) {
-          if (lower.includes(keyword)) {
-            for (const t of tokens) suggestions.add(t);
-          }
-        }
-        // Default if nothing matched
-        if (suggestions.size === 0) {
-          suggestions.add('spacing');
-          suggestions.add('color');
-        }
-        return Array.from(suggestions);
-      }
-
       interface Mapping {
         element: string;
         match: {
@@ -59,7 +60,7 @@ export function registerMapElements(server: McpServer, registry: Registry, track
           description: string;
           import: string;
         } | null;
-        alternatives: Array<{ name: string; layer: number; reason: string }>;
+        alternatives: Array<{ name: string; layer: number; type: string }>;
         confidence: 'high' | 'medium' | 'low' | 'none';
         tokenSuggestions?: string[];
       }
@@ -68,7 +69,7 @@ export function registerMapElements(server: McpServer, registry: Registry, track
       const unmapped: string[] = [];
 
       for (const element of elements) {
-        const results = registry.searchComponents(element);
+        const results = registry.searchComponentsWithScores(element);
 
         if (results.length === 0) {
           unmapped.push(element);
@@ -82,27 +83,12 @@ export function registerMapElements(server: McpServer, registry: Registry, track
           continue;
         }
 
-        const top = results[0];
-        const alternatives = results.slice(1, 4).map(c => ({
-          name: c.name,
-          layer: c.layer,
-          reason: c.description,
+        const { meta: top, score: topScore } = results[0];
+        const alternatives = results.slice(1, 4).map(r => ({
+          name: r.meta.name,
+          layer: r.meta.layer,
+          type: r.meta.type,
         }));
-
-        // Determine confidence based on score gap
-        // Re-score the top result to check quality
-        const q = element.toLowerCase();
-        const terms = q.split(/\s+/);
-        let topScore = 0;
-        for (const term of terms) {
-          if (top.name.toLowerCase().includes(term)) topScore += 10;
-          if (top.name.toLowerCase() === term) topScore += 5;
-          if (top.type.toLowerCase().includes(term)) topScore += 3;
-          if (top.description.toLowerCase().includes(term)) topScore += 5;
-          for (const uc of top.useCases) {
-            if (uc.toLowerCase().includes(term)) topScore += 7;
-          }
-        }
 
         let confidence: 'high' | 'medium' | 'low';
         if (topScore >= 15) confidence = 'high';
@@ -151,7 +137,7 @@ export function registerMapElements(server: McpServer, registry: Registry, track
       };
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     })
   );

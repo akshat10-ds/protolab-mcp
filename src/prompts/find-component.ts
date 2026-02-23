@@ -1,44 +1,33 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Registry } from '../data/registry';
+import { apiCard } from './format';
 
 export function registerFindComponentPrompt(server: McpServer, registry: Registry) {
   server.prompt(
     'find_component',
-    'Find the right Ink Design System component for a UI need. Returns search results and matching guidance.',
+    'Find the right Ink Design System component for a UI need. Returns matching components with full API details — ready to use without additional tool calls.',
     { need: z.string().describe("What you need, e.g. 'searchable dropdown', 'file upload', 'data table with sorting'") },
     ({ need }) => {
       const searchResults = registry.searchComponents(need);
-      const topMatches = searchResults.slice(0, 8).map(c => ({
-        name: c.name,
-        layer: c.layer,
-        layerName: registry.getLayerName(c.layer),
-        type: c.type,
-        description: c.description,
-        import: `import { ${c.name} } from '${c.imports}';`,
-        useCases: c.useCases,
-      }));
-
-      const topMatchName = topMatches[0]?.name ?? '[ComponentName]';
+      const topMatches = searchResults.slice(0, 8);
 
       const matchSection = topMatches.length > 0
-        ? `### Search Results\n\n${topMatches.map((m, i) => `${i + 1}. **${m.name}** (Layer ${m.layer} — ${m.layerName})\n   ${m.description}\n   \`${m.import}\`\n   Use cases: ${m.useCases.join(', ')}`).join('\n\n')}`
-        : `### Search Results\n\nNo direct matches found for "${need}".`;
+        ? `### Best Matches\n\n${topMatches.map((c, i) => `**${i + 1}. ${c.name}** — ${c.description}\n\n${apiCard(c)}`).join('\n\n')}`
+        : `### No Direct Matches\n\nNo components matched "${need}". Try broader terms like "dropdown", "input", or "table".`;
 
       const text = `## Finding: "${need}"
 
 ${matchSection}
 
 ### If No Exact Match
-Try these strategies:
-1. **Broader terms**: search_components("dropdown") instead of "searchable dropdown"
-2. **Use case terms**: search_components("file") or search_components("upload")
-3. **Layer browsing**: list_components({ layer: 4 }) to browse all composites
-4. **Composition**: Combine primitives — e.g., Input + Popover + List = custom combo
+1. **Broader terms**: try "dropdown" instead of "searchable dropdown"
+2. **Browse by layer**: call \`list_components({ layer: 4 })\` for all composites
+3. **Compose**: combine primitives — e.g., Input + Popover + List = custom combo
 
-### Next Steps
-- Call \`get_component("${topMatchName}")\` for full props and examples
-- Call \`get_component_source("${topMatchName}")\` for implementation files`;
+### Getting Source Files
+To copy a component's source into your project:
+\`get_component_source("${topMatches[0]?.name ?? 'ComponentName'}")\``;
 
       return {
         messages: [

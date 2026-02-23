@@ -69,10 +69,28 @@ const LAYER_NAMES: Record<number, string> = {
   6: 'layouts',
 };
 
+interface SearchIndexEntry {
+  meta: ComponentMeta;
+  nameLower: string;
+  typeLower: string;
+  descriptionLower: string;
+  useCasesLower: string[];
+  aliasesLower: string[];
+  propsLower: string[];
+}
+
 export class Registry {
   private components: Map<string, ComponentMeta> = new Map();
+  private lowercaseMap: Map<string, ComponentMeta> = new Map();
+  private searchIndex: Map<string, SearchIndexEntry> = new Map();
   private version: string = '';
   private totalComponents: number = 0;
+
+  // Cached derived data (immutable after construction)
+  private allNamesSet: Set<string> | null = null;
+  private listAllCache: ComponentMeta[] | null = null;
+  private listByLayerCache: Map<number, ComponentMeta[]> = new Map();
+  private statsCache: { version: string; totalComponents: number; byLayer: Record<string, number> } | null = null;
 
   constructor(data: RegistryData, propDetails?: Record<string, ComponentPropDetails>) {
     this.version = data.version;
@@ -83,94 +101,115 @@ export class Registry {
         meta.propDetails = propDetails[name];
       }
       this.components.set(name, meta);
+      this.lowercaseMap.set(name.toLowerCase(), meta);
+      this.searchIndex.set(name, {
+        meta,
+        nameLower: name.toLowerCase(),
+        typeLower: meta.type.toLowerCase(),
+        descriptionLower: meta.description.toLowerCase(),
+        useCasesLower: meta.useCases.map(uc => uc.toLowerCase()),
+        aliasesLower: (meta.aliases ?? []).map(a => a.toLowerCase()),
+        propsLower: meta.props.map(p => p.toLowerCase()),
+      });
     }
   }
 
   getComponent(name: string): ComponentMeta | undefined {
-    // Try exact match first
-    const exact = this.components.get(name);
-    if (exact) return exact;
-
-    // Try case-insensitive
-    for (const [key, meta] of this.components) {
-      if (key.toLowerCase() === name.toLowerCase()) {
-        return meta;
-      }
-    }
-    return undefined;
+    return this.components.get(name) ?? this.lowercaseMap.get(name.toLowerCase());
   }
 
   listComponents(layer?: number): ComponentMeta[] {
-    const all = Array.from(this.components.values());
     if (layer !== undefined) {
-      return all.filter(c => c.layer === layer);
+      let cached = this.listByLayerCache.get(layer);
+      if (!cached) {
+        cached = Array.from(this.components.values()).filter(c => c.layer === layer);
+        this.listByLayerCache.set(layer, cached);
+      }
+      return cached;
     }
-    return all;
+    if (!this.listAllCache) {
+      this.listAllCache = Array.from(this.components.values());
+    }
+    return this.listAllCache;
   }
 
-  searchComponents(query: string): ComponentMeta[] {
+  searchComponentsWithScores(query: string): Array<{ meta: ComponentMeta; score: number }> {
     const q = query.toLowerCase();
-    const terms = q.split(/\s+/);
 
+    // Fast path: exact name match skips the full scoring loop
+    const exactMatch = this.components.get(query) ?? this.lowercaseMap.get(q);
+    if (exactMatch) {
+      return [{ meta: exactMatch, score: 100 }];
+    }
+
+    const terms = q.split(/\s+/);
     const scored: { meta: ComponentMeta; score: number }[] = [];
 
-    for (const meta of this.components.values()) {
+    for (const entry of this.searchIndex.values()) {
       let score = 0;
 
       for (const term of terms) {
         // Name match (highest weight)
-        if (meta.name.toLowerCase().includes(term)) {
+        if (entry.nameLower.includes(term)) {
           score += 10;
-          if (meta.name.toLowerCase() === term) score += 5; // exact name match bonus
+          if (entry.nameLower === term) score += 5; // exact name match bonus
         }
 
         // Type match
-        if (meta.type.toLowerCase().includes(term)) {
+        if (entry.typeLower.includes(term)) {
           score += 3;
         }
 
         // Description match
-        if (meta.description.toLowerCase().includes(term)) {
+        if (entry.descriptionLower.includes(term)) {
           score += 5;
         }
 
         // Use case match
-        for (const uc of meta.useCases) {
-          if (uc.toLowerCase().includes(term)) {
+        for (const uc of entry.useCasesLower) {
+          if (uc.includes(term)) {
             score += 7;
           }
         }
 
         // Alias match (high weight — these are curated alternative names)
-        if (meta.aliases) {
-          for (const alias of meta.aliases) {
-            if (alias.toLowerCase().includes(term)) {
-              score += 8;
-              if (alias.toLowerCase() === q) score += 5; // exact alias match bonus
-            }
+        for (const alias of entry.aliasesLower) {
+          if (alias.includes(term)) {
+            score += 8;
+            if (alias === q) score += 5; // exact alias match bonus
           }
         }
 
         // Prop match
-        for (const prop of meta.props) {
-          if (prop.toLowerCase().includes(term)) {
+        for (const prop of entry.propsLower) {
+          if (prop.includes(term)) {
             score += 2;
           }
         }
       }
 
       if (score > 0) {
-        scored.push({ meta, score });
+        scored.push({ meta: entry.meta, score });
       }
     }
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .map(s => s.meta);
+    return scored.sort((a, b) => b.score - a.score);
+  }
+
+  searchComponents(query: string): ComponentMeta[] {
+    return this.searchComponentsWithScores(query).map(s => s.meta);
   }
 
   getAllNames(): string[] {
     return Array.from(this.components.keys());
+  }
+
+  /** Returns a cached Set of all component names (avoids rebuilding per call) */
+  getAllNamesSet(): Set<string> {
+    if (!this.allNamesSet) {
+      this.allNamesSet = new Set(this.components.keys());
+    }
+    return this.allNamesSet;
   }
 
   getLayerName(layer: number): string {
@@ -178,15 +217,18 @@ export class Registry {
   }
 
   getStats() {
-    return {
-      version: this.version,
-      totalComponents: this.totalComponents,
-      byLayer: Object.fromEntries(
-        [2, 3, 4, 5, 6].map(l => [
-          `${l}-${this.getLayerName(l)}`,
-          this.listComponents(l).length,
-        ])
-      ),
-    };
+    if (!this.statsCache) {
+      this.statsCache = {
+        version: this.version,
+        totalComponents: this.totalComponents,
+        byLayer: Object.fromEntries(
+          [2, 3, 4, 5, 6].map(l => [
+            `${l}-${this.getLayerName(l)}`,
+            this.listComponents(l).length,
+          ])
+        ),
+      };
+    }
+    return this.statsCache;
   }
 }

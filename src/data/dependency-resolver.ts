@@ -7,6 +7,8 @@ export interface ResolvedComponent {
 }
 
 export class DependencyResolver {
+  private resolveCache = new Map<string, ResolvedComponent[]>();
+
   constructor(private registry: Registry) {}
 
   /**
@@ -15,11 +17,15 @@ export class DependencyResolver {
    * (deepest dependencies first, target component last).
    */
   resolve(componentName: string): ResolvedComponent[] {
+    const cached = this.resolveCache.get(componentName);
+    if (cached) return cached;
+
     const visited = new Set<string>();
     const result: ResolvedComponent[] = [];
 
     this.walk(componentName, visited, result);
 
+    this.resolveCache.set(componentName, result);
     return result;
   }
 
