@@ -74,11 +74,32 @@ const LAYER_NAMES: Record<number, string> = {
 interface SearchIndexEntry {
   meta: ComponentMeta;
   nameLower: string;
+  nameTokensLower: string[];  // camelCase split: "DataTable" → ["data", "table"]
   typeLower: string;
   descriptionLower: string;
   useCasesLower: string[];
   aliasesLower: string[];
   propsLower: string[];
+  propDescriptionsLower: string[];
+}
+
+/** Split a PascalCase/camelCase name into lowercase tokens: "DataTable" → ["data", "table"] */
+function splitCamelCase(name: string): string[] {
+  return name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(/\s+/);
+}
+
+/** Common English stop words filtered from multi-term queries to reduce noise */
+export const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'with', 'for', 'and', 'or', 'in', 'on', 'to', 'of', 'is',
+]);
+
+/** Check if `term` appears at a word boundary in `text` (prevents "table" matching "selecTABLE") */
+function wordBoundaryMatch(text: string, term: string): boolean {
+  const idx = text.indexOf(term);
+  if (idx === -1) return false;
+  const before = idx === 0 || !/[a-z0-9]/i.test(text[idx - 1]);
+  const after = idx + term.length >= text.length || !/[a-z0-9]/i.test(text[idx + term.length]);
+  return before && after;
 }
 
 export class Registry {
@@ -111,11 +132,15 @@ export class Registry {
       this.searchIndex.set(name, {
         meta,
         nameLower: name.toLowerCase(),
+        nameTokensLower: splitCamelCase(name),
         typeLower: meta.type.toLowerCase(),
         descriptionLower: meta.description.toLowerCase(),
         useCasesLower: meta.useCases.map(uc => uc.toLowerCase()),
         aliasesLower: (meta.aliases ?? []).map(a => a.toLowerCase()),
         propsLower: meta.props.map(p => p.toLowerCase()),
+        propDescriptionsLower: (meta.propDetails?.props ?? [])
+          .map(p => p.description?.toLowerCase() ?? '')
+          .filter(d => d.length > 0),
       });
     }
   }
@@ -141,57 +166,101 @@ export class Registry {
 
   searchComponentsWithScores(query: string): Array<{ meta: ComponentMeta; score: number }> {
     const q = query.toLowerCase();
-
-    // Fast path: exact name match skips the full scoring loop
-    const exactMatch = this.components.get(query) ?? this.lowercaseMap.get(q);
-    if (exactMatch) {
-      return [{ meta: exactMatch, score: 100 }];
-    }
-
-    const terms = q.split(/\s+/);
+    let terms = q.split(/\s+/).filter(t => !STOP_WORDS.has(t));
+    if (terms.length === 0) terms = q.split(/\s+/); // fallback if everything was a stop word
     const scored: { meta: ComponentMeta; score: number }[] = [];
 
     for (const entry of this.searchIndex.values()) {
       let score = 0;
+      let termsHit = 0;
+
+      // Exact name match bonus (case-insensitive)
+      if (entry.nameLower === q) {
+        score += 50;
+      }
 
       for (const term of terms) {
-        // Name match (highest weight)
-        if (entry.nameLower.includes(term)) {
+        let termHit = false;
+
+        // Name match — word-boundary OR camelCase token match (highest weight)
+        if (wordBoundaryMatch(entry.nameLower, term)) {
           score += 10;
+          termHit = true;
           if (entry.nameLower === term) score += 5; // exact name match bonus
+        } else if (entry.nameTokensLower.some(t => t === term)) {
+          score += 10; // exact token match (e.g., "table" in "DataTable")
+          termHit = true;
+        } else if (entry.nameTokensLower.some(t => t.includes(term))) {
+          score += 6; // partial token match
+          termHit = true;
         }
 
-        // Type match
-        if (entry.typeLower.includes(term)) {
+        // Type match — word-boundary
+        if (wordBoundaryMatch(entry.typeLower, term)) {
           score += 3;
+          termHit = true;
         }
 
-        // Description match
+        // Description match — substring (natural language benefits from loose matching)
         if (entry.descriptionLower.includes(term)) {
           score += 5;
+          termHit = true;
         }
 
-        // Use case match
+        // Use case match — substring (only count first match per term)
         for (const uc of entry.useCasesLower) {
           if (uc.includes(term)) {
             score += 7;
+            termHit = true;
+            break;
           }
         }
 
-        // Alias match (high weight — these are curated alternative names)
+        // Alias match — word-boundary (only count first match per term)
         for (const alias of entry.aliasesLower) {
-          if (alias.includes(term)) {
+          if (wordBoundaryMatch(alias, term)) {
             score += 8;
+            termHit = true;
             if (alias === q) score += 5; // exact alias match bonus
+            break;
           }
         }
 
-        // Prop match
+        // Prop match — word-boundary
         for (const prop of entry.propsLower) {
-          if (prop.includes(term)) {
+          if (wordBoundaryMatch(prop, term)) {
             score += 2;
+            termHit = true;
           }
         }
+
+        // Prop description match — substring (natural language)
+        for (const desc of entry.propDescriptionsLower) {
+          if (desc.includes(term)) {
+            score += 3;
+            termHit = true;
+            break; // one match per term is enough
+          }
+        }
+
+        if (termHit) termsHit++;
+      }
+
+      // Boost when the full component name appears as a word in the query
+      // e.g. "save button" should strongly prefer Button over ComboButton
+      if (wordBoundaryMatch(q, entry.nameLower)) {
+        score += 15;
+      }
+
+      // Multi-term relevance boost: bonus when ALL search terms match
+      if (terms.length > 1 && termsHit === terms.length) {
+        score += terms.length * 3;
+      }
+
+      // Penalize unmatched terms in multi-term queries
+      if (terms.length > 1) {
+        const missedTerms = terms.length - termsHit;
+        score -= missedTerms * 4;
       }
 
       if (score > 0) {

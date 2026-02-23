@@ -36,3 +36,4 @@ public/source/
 
 # Test results and benchmark output
 tests/results/
+.vercel

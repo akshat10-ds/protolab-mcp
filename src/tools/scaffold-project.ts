@@ -127,8 +127,28 @@ const APP_TSX = `export default function App() {
 }
 `;
 
-const INDEX_CSS = `@import './design-system/1-tokens/tokens.css';
+const INDEX_CSS_WITH_FONTS = `@import './design-system/1-tokens/tokens.css';
 @import './styles/fonts.css';
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  line-height: 1.5;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink-font-default);
+  background-color: var(--ink-bg-default);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+img, svg { display: block; max-width: 100%; }
+`;
+
+const INDEX_CSS_NO_FONTS = `@import './design-system/1-tokens/tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -221,8 +241,13 @@ export function registerScaffoldProject(
         .optional()
         .default('urls')
         .describe('Response mode: "urls" returns file URLs for source code (default, ~5KB), "inline" returns full file contents (~200KB+)'),
+      includeFonts: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe('Include DS Indigo font files (12 woff2 variants). Set false to use system fonts and reduce response size.'),
     },
-    withTracking(tracker, 'scaffold_project', server, async ({ projectName, components, mode }) => {
+    withTracking(tracker, 'scaffold_project', server, async ({ projectName, components, mode, includeFonts }) => {
       // ── 1. Resolve & validate components ───────────────────────────
       const notFound: string[] = [];
       const allResolved = new Map<string, { name: string; layer: number }>();
@@ -346,7 +371,7 @@ export function registerScaffoldProject(
         'index.html': indexHtml(projectName),
         'src/main.tsx': MAIN_TSX,
         'src/App.tsx': APP_TSX,
-        'src/index.css': INDEX_CSS,
+        'src/index.css': includeFonts ? INDEX_CSS_WITH_FONTS : INDEX_CSS_NO_FONTS,
       };
 
       const componentCount = allResolved.size;
@@ -406,21 +431,18 @@ export function registerScaffoldProject(
           componentCount,
           components: componentNames,
           ...(notFound.length > 0 && { notFound }),
-          instructions: [
-            `1. Write all files to a '${projectName}' directory`,
-            '2. Fetch "fonts.css" URL and write to src/styles/fonts.css',
-            '3. Fetch each "fontFiles" URL and write to its destPath (public/fonts/)',
-            `4. cd ${projectName} && npm install`,
-            '5. npm run dev',
-            '6. Write your prototype in src/App.tsx',
-            `7. Import components from '@/design-system'`,
-          ].join('\n'),
+          quickStart: `cd ${projectName} && npm install && npm run dev`,
+          instructions: includeFonts
+            ? `Write all files, fetch fonts.css to src/styles/fonts.css, fetch fontFiles to public/fonts/, then run quickStart. Import from '@/design-system'.`
+            : `Write all files, then run quickStart. Import from '@/design-system'.`,
           files,
-          fonts: { destPath: 'src/styles/fonts.css', url: `${siteUrl}/fonts.css` },
-          fontFiles: FONT_FILES.map(f => ({
-            destPath: `public/${f}`,
-            url: `${siteUrl}/${f}`,
-          })),
+          ...(includeFonts && {
+            fonts: { destPath: 'src/styles/fonts.css', url: `${siteUrl}/fonts.css` },
+            fontFiles: FONT_FILES.map(f => ({
+              destPath: `public/${f}`,
+              url: `${siteUrl}/${f}`,
+            })),
+          }),
         };
 
         return {
@@ -457,6 +479,14 @@ export function registerScaffoldProject(
         }
       }
 
+      const infrastructure: Record<string, { destPath: string; url: string }> = {
+        tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
+        utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
+      };
+      if (includeFonts) {
+        infrastructure.fonts = { destPath: 'src/styles/fonts.css', url: `${getSiteBaseUrl()}/fonts.css` };
+      }
+
       const result = {
         projectName,
         mode: 'urls' as const,
@@ -465,29 +495,19 @@ export function registerScaffoldProject(
         componentCount,
         components: componentNames,
         ...(notFound.length > 0 && { notFound }),
-        instructions: [
-          `1. Create a '${projectName}' directory`,
-          '2. Write the "boilerplate", "barrels", and "generatedFiles" directly (content is included)',
-          '3. For each entry in "sourceFiles", fetch the URL and write to the destPath',
-          '4. Fetch the infrastructure URLs and write tokens.css, utils.ts, fonts.css',
-          '5. Fetch each "fontFiles" URL and write to its destPath (public/fonts/)',
-          `6. cd ${projectName} && npm install && npm run dev`,
-          '7. Write your prototype in src/App.tsx',
-          `8. Import components from '@/design-system'`,
-        ].join('\n'),
+        quickStart: `cd ${projectName} && npm install && npm run dev`,
+        instructions: `Write boilerplate/barrels/generatedFiles directly, fetch sourceFiles URLs to destPaths, fetch infrastructure URLs, ${includeFonts ? 'fetch fontFiles to public/fonts/, ' : ''}then run quickStart. Import from '@/design-system'.`,
         boilerplate: boilerplateFiles,
         barrels: barrelFiles,
         ...(Object.keys(generatedFiles).length > 0 && { generatedFiles }),
         sourceFiles,
-        infrastructure: {
-          tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
-          utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
-          fonts: { destPath: 'src/styles/fonts.css', url: `${getSiteBaseUrl()}/fonts.css` },
-        },
-        fontFiles: FONT_FILES.map(f => ({
-          destPath: `public/${f}`,
-          url: `${getSiteBaseUrl()}/${f}`,
-        })),
+        infrastructure,
+        ...(includeFonts && {
+          fontFiles: FONT_FILES.map(f => ({
+            destPath: `public/${f}`,
+            url: `${getSiteBaseUrl()}/${f}`,
+          })),
+        }),
       };
 
       return {

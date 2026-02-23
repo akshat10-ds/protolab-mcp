@@ -45,7 +45,14 @@ export function extractComponentProps(
 ): ComponentPropDetails | null {
   // Find the types file or main TSX file
   const typesFile = sourceFiles.find(f => f.path.endsWith('/types.ts') || f.path.endsWith('.types.ts'));
-  const tsxFile = sourceFiles.find(f => f.path.endsWith(`${componentName}.tsx`));
+
+  // Primary: exact filename match; Fallback: find TSX containing this component's props interface
+  const tsxFile = sourceFiles.find(f => {
+    const fileName = f.path.split('/').pop() ?? '';
+    return fileName === `${componentName}.tsx`;
+  }) ?? sourceFiles.find(f => {
+    return f.path.endsWith('.tsx') && f.content.includes(`interface ${componentName}Props`);
+  });
 
   // Parse all source into one combined context for type alias resolution
   const typeAliases = new Map<string, PropTypeAlias>();

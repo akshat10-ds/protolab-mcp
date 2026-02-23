@@ -165,6 +165,45 @@ function buildBundleFromSource(): BundleData {
   const totalProps = Object.values(propDetails).reduce((s, d) => s + d.props.length, 0);
   console.log(`Prop details: ${totalProps} props from ${extracted} components`);
 
+  // Reconcile meta.props from propDetails — derive from source truth
+  let reconciledCount = 0;
+  for (const [name, details] of Object.entries(propDetails)) {
+    const meta = registry.components[name] as { props: string[] } | undefined;
+    if (!meta) continue;
+    const required = details.props.filter(p => p.required).map(p => p.name);
+    const optional = details.props.filter(p => !p.required).map(p => p.name);
+    const derived = [...required, ...optional];
+    const before = JSON.stringify(meta.props);
+    const after = JSON.stringify(derived);
+    if (before !== after) {
+      meta.props = derived;
+      reconciledCount++;
+    }
+  }
+  console.log(`Props reconciliation: updated ${reconciledCount} components`);
+
+  // Validate examples against propDetails
+  let exampleWarnings = 0;
+  for (const [name, meta] of Object.entries(registry.components) as [string, { propDetails?: { props: { name: string }[] }; examples?: string[] }][]) {
+    const details = propDetails[name];
+    if (!details?.props || !meta.examples?.length) continue;
+    const validProps = new Set(details.props.map((p: { name: string }) => p.name));
+    const exampleText = meta.examples.join('\n');
+    // Match prop-like patterns: word={ or word=" or word=' or word=<
+    const usedProps = [...exampleText.matchAll(/\b([a-z]\w*)(?==[\{\"\'<])/g)].map(m => m[1]);
+    for (const prop of usedProps) {
+      if (!validProps.has(prop) && !['className', 'style', 'key', 'ref', 'children'].includes(prop)) {
+        console.warn(`  Warning: ${name} example uses unknown prop "${prop}" (valid: ${[...validProps].join(', ')})`);
+        exampleWarnings++;
+      }
+    }
+  }
+  if (exampleWarnings > 0) {
+    console.log(`Example validation: ${exampleWarnings} warnings`);
+  } else {
+    console.log(`Example validation: all examples use valid props`);
+  }
+
   return { registry, sources, tokens, utility, propDetails };
 }
 

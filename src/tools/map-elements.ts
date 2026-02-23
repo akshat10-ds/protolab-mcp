@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { Registry } from '../data/registry';
+import { STOP_WORDS, type Registry } from '../data/registry';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
 
@@ -90,9 +90,14 @@ export function registerMapElements(server: McpServer, registry: Registry, track
           type: r.meta.type,
         }));
 
+        // Scale confidence thresholds by query complexity
+        const termCount = element.split(/\s+/).filter((t: string) => !STOP_WORDS.has(t)).length || 1;
+        const highThreshold = 10 + (termCount * 5);   // 1 term: 15, 2 terms: 20, 3 terms: 25
+        const medThreshold = 5 + (termCount * 3);     // 1 term: 8, 2 terms: 11, 3 terms: 14
+
         let confidence: 'high' | 'medium' | 'low';
-        if (topScore >= 15) confidence = 'high';
-        else if (topScore >= 7) confidence = 'medium';
+        if (topScore >= highThreshold) confidence = 'high';
+        else if (topScore >= medThreshold) confidence = 'medium';
         else confidence = 'low';
 
         mappings.push({
