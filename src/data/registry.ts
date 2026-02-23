@@ -102,6 +102,22 @@ function wordBoundaryMatch(text: string, term: string): boolean {
   return before && after;
 }
 
+/** Levenshtein edit distance between two strings */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
 export class Registry {
   private components: Map<string, ComponentMeta> = new Map();
   private lowercaseMap: Map<string, ComponentMeta> = new Map();
@@ -257,10 +273,32 @@ export class Registry {
         score += terms.length * 3;
       }
 
+      // Multi-term alias phrase boost: when consecutive query terms form an alias
+      if (terms.length > 1) {
+        const termsStr = terms.join(' ');
+        for (const alias of entry.aliasesLower) {
+          if (termsStr.includes(alias) || alias.includes(termsStr)) {
+            score += 12; // strong phrase bonus
+            break;
+          }
+          // Check if all alias terms appear in query (partial phrase)
+          const aliasTerms = alias.split(/\s+/);
+          if (aliasTerms.length > 1 && aliasTerms.every(at => terms.includes(at))) {
+            score += 10; // partial phrase bonus
+            break;
+          }
+        }
+      }
+
       // Penalize unmatched terms in multi-term queries
       if (terms.length > 1) {
         const missedTerms = terms.length - termsHit;
         score -= missedTerms * 4;
+      }
+
+      // Layer penalty: utility components (layer 2) are less likely search targets
+      if (score > 0 && entry.meta.layer === 2) {
+        score -= 3;
       }
 
       if (score > 0) {
@@ -305,5 +343,18 @@ export class Registry {
       };
     }
     return this.statsCache;
+  }
+
+  /** Fuzzy match component names using Levenshtein distance */
+  fuzzyMatch(name: string, maxDistance = 3): ComponentMeta[] {
+    const lower = name.toLowerCase();
+    const results: { meta: ComponentMeta; distance: number }[] = [];
+    for (const [compName, meta] of this.components) {
+      const dist = levenshtein(lower, compName.toLowerCase());
+      if (dist <= maxDistance) {
+        results.push({ meta, distance: dist });
+      }
+    }
+    return results.sort((a, b) => a.distance - b.distance).map(r => r.meta);
   }
 }

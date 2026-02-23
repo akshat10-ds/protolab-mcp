@@ -139,6 +139,49 @@ describe('Journey 3: Scaffold and validate', () => {
     expect(fontFiles.length, `Font files found: ${fontFiles.map((f: { path: string }) => f.path).join(', ')}`).toBe(0);
   });
 
+  test('scaffold_project generates smart App.tsx with DocuSignShell + DataTable', async () => {
+    const result = await callTool('scaffold_project', {
+      projectName: 'smart-app-test',
+      components: ['DocuSignShell', 'DataTable', 'Badge', 'Button', 'PageHeader'],
+      mode: 'inline',
+      includeFonts: false,
+    }) as { files: Record<string, string> };
+
+    const appTsx = result.files['src/App.tsx'];
+    expect(appTsx, 'App.tsx should exist').toBeDefined();
+
+    // Should have correct imports
+    expect(appTsx).toContain("from '@/design-system'");
+    expect(appTsx).toContain('DocuSignShell');
+    expect(appTsx).toContain('DataTable');
+
+    // Should use globalNav as config object (not JSX)
+    expect(appTsx).toContain('globalNav={{');
+
+    // Should have sample data and columns
+    expect(appTsx).toContain('sampleData');
+    expect(appTsx).toContain('columns');
+    expect(appTsx).toContain('getRowKey');
+
+    // Should NOT be the empty placeholder
+    expect(appTsx).not.toContain('{/* Your prototype here */}');
+  });
+
+  test('scaffold_project generates form App.tsx when Input is included', async () => {
+    const result = await callTool('scaffold_project', {
+      projectName: 'form-test',
+      components: ['Input', 'Button', 'Stack'],
+      mode: 'inline',
+      includeFonts: false,
+    }) as { files: Record<string, string> };
+
+    const appTsx = result.files['src/App.tsx'];
+    expect(appTsx).toContain('Input');
+    expect(appTsx).toContain('label=');
+    expect(appTsx).toContain('Button');
+    expect(appTsx).not.toContain('{/* Your prototype here */}');
+  });
+
   test('validate_component_usage catches unknown components', async () => {
     const code = `
 import { Button, FakeComponent } from '@ink/design-system';
@@ -208,6 +251,49 @@ describe('Journey 4: Explore, drill down, get source', () => {
       // URL should contain the source path prefix
       expect(file.url).toContain('/source/');
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Journey 6: "Validate generated code"
+// ═══════════════════════════════════════════════════════════════════════
+describe('Journey 6: Validate generated code', () => {
+  test('validate_component_usage detects unknown props', async () => {
+    // Use Modal (doesn't extend HTMLAttributes) so unknown props are detectable
+    const code = `<Modal open={true} onClose={() => {}} title="Test" fakeUnknownProp="test"><p>Content</p></Modal>`;
+    const result = await callTool('validate_component_usage', { code }) as {
+      issues: Array<{ severity: string; component: string; message: string }>;
+    };
+    const hasUnknownProp = result.issues.some(i => i.message.includes('fakeUnknownProp'));
+    expect(hasUnknownProp, `Issues: ${JSON.stringify(result.issues)}`).toBe(true);
+  });
+
+  test('validate_component_usage detects invalid enum values', async () => {
+    const code = `<Button kind="invalid">Save</Button>`;
+    const result = await callTool('validate_component_usage', { code }) as {
+      issues: Array<{ severity: string; component: string; message: string }>;
+    };
+    const hasInvalid = result.issues.some(i => i.message.includes('"invalid"'));
+    expect(hasInvalid, `Issues: ${JSON.stringify(result.issues)}`).toBe(true);
+  });
+
+  test('validate_component_usage detects JSX inline hardcoded colors', async () => {
+    const code = `<div style={{ color: '#FF0000', backgroundColor: '#000' }}><Button kind="brand">Save</Button></div>`;
+    const result = await callTool('validate_component_usage', { code }) as {
+      issues: Array<{ severity: string; component: string; message: string }>;
+    };
+    const hasColor = result.issues.some(i => i.message.includes('hardcoded color'));
+    expect(hasColor, `Issues: ${JSON.stringify(result.issues)}`).toBe(true);
+  });
+
+  test('get_component with nonsense name returns fuzzy suggestions', async () => {
+    const result = await callTool('get_component', { name: 'Buton' }) as {
+      error: string;
+      suggestions: string[];
+    };
+    expect(result.error).toContain('not found');
+    expect(result.suggestions.length).toBeGreaterThan(0);
+    expect(result.suggestions).toContain('Button');
   });
 });
 

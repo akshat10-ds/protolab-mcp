@@ -118,14 +118,234 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 `;
 
-const APP_TSX = `export default function App() {
-  return (
-    <div>
-      {/* Your prototype here */}
-    </div>
+// ── Smart App.tsx generation ─────────────────────────────────────────
+
+/**
+ * Detect the best layout pattern from the resolved component set
+ * and generate a working App.tsx with correct imports and composition.
+ *
+ * Patterns (checked in priority order):
+ * 1. Shell + DataTable  → full app with table, sample data, columns
+ * 2. Shell + Form       → app with form fields
+ * 3. Shell + Dashboard  → app with card grid
+ * 4. Shell only         → minimal app shell
+ * 5. DataTable (no shell) → standalone table
+ * 6. Form (no shell)    → standalone form
+ * 7. Fallback           → imports + placeholder
+ */
+function generateAppTsx(componentNames: Set<string>): string {
+  const has = (name: string) => componentNames.has(name);
+
+  const hasShell = has('DocuSignShell');
+  const hasTable = has('DataTable');
+  const hasForm = has('Input') || has('Select') || has('ComboBox') || has('TextArea');
+  const hasDashboard = has('Card') && (has('Grid') || has('Inline'));
+  const hasModal = has('Modal');
+  const hasPageHeader = has('PageHeader');
+  const hasTabs = has('Tabs');
+
+  // Build import list based on what's used in the template
+  const imports = new Set<string>();
+
+  // ── Shell wrapper (open/close) ───────────────────────────────────
+  let shellOpen = '';
+  let shellClose = '';
+
+  if (hasShell) {
+    imports.add('DocuSignShell');
+    shellOpen = `    <DocuSignShell
+      globalNav={{
+        appName: 'My App',
+        navItems: [
+          { id: 'home', label: 'Home', href: '/', active: true },
+          { id: 'settings', label: 'Settings', href: '/settings' },
+        ],
+      }}
+    >`;
+    shellClose = '    </DocuSignShell>';
+  }
+
+  // ── Page header ──────────────────────────────────────────────────
+  let headerBlock = '';
+  if (hasPageHeader) {
+    imports.add('PageHeader');
+    if (has('Button')) {
+      imports.add('Button');
+      headerBlock = `      <PageHeader title="My Page" actions={<Button kind="brand">New</Button>} />`;
+    } else {
+      headerBlock = '      <PageHeader title="My Page" />';
+    }
+  }
+
+  // ── Content block (the main body) ────────────────────────────────
+  let contentBlock = '';
+  let stateBlock = '';
+  let topLevelCode = '';
+
+  if (hasTable) {
+    // DataTable template with sample data
+    imports.add('DataTable');
+    if (has('Badge')) imports.add('Badge');
+
+    topLevelCode = `
+// Sample data — replace with your own
+interface Row {
+  id: string;
+  name: string;
+  status: string;
+  date: string;
+}
+
+const sampleData: Row[] = [
+  { id: '1', name: 'NDA - Acme Corp', status: 'Active', date: '2024-01-15' },
+  { id: '2', name: 'MSA - Globex Inc', status: 'Pending', date: '2024-02-20' },
+  { id: '3', name: 'SOW - Initech', status: 'Completed', date: '2024-03-10' },
+];
+
+const columns = [
+  { key: 'name' as const, header: 'Name', sortable: true },${has('Badge') ? `
+  {
+    key: 'status' as const,
+    header: 'Status',
+    cell: (row: Row) => <Badge kind={row.status === 'Active' ? 'success' : 'subtle'}>{row.status}</Badge>,
+  },` : `
+  { key: 'status' as const, header: 'Status' },`}
+  { key: 'date' as const, header: 'Date' },
+];
+`;
+
+    contentBlock = `      <DataTable
+          columns={columns}
+          data={sampleData}
+          getRowKey={(row) => row.id}
+        />`;
+  } else if (hasForm) {
+    // Form template
+    imports.add('Stack');
+    if (has('Input')) imports.add('Input');
+    if (has('Select')) imports.add('Select');
+    if (has('TextArea')) imports.add('TextArea');
+    if (has('ComboBox')) imports.add('ComboBox');
+    if (has('Button')) imports.add('Button');
+
+    const fields: string[] = [];
+    if (has('Input')) {
+      fields.push('        <Input label="Full Name" placeholder="Enter your name" />');
+      fields.push('        <Input label="Email" type="email" placeholder="you@example.com" />');
+    }
+    if (has('Select')) {
+      fields.push(`        <Select label="Role" options={[
+          { value: 'admin', label: 'Admin' },
+          { value: 'user', label: 'User' },
+          { value: 'viewer', label: 'Viewer' },
+        ]} />`);
+    }
+    if (has('TextArea')) {
+      fields.push('        <TextArea label="Notes" placeholder="Additional notes..." rows={4} />');
+    }
+    if (has('ComboBox')) {
+      fields.push(`        <ComboBox label="Department" options={[
+          { value: 'eng', label: 'Engineering' },
+          { value: 'design', label: 'Design' },
+          { value: 'product', label: 'Product' },
+        ]} />`);
+    }
+    if (has('Button')) {
+      fields.push('        <Button kind="brand">Save Changes</Button>');
+    }
+
+    contentBlock = `      <Stack gap="medium" style={{ maxWidth: 600, padding: 'var(--ink-spacing-300)' }}>
+${fields.join('\n')}
+      </Stack>`;
+  } else if (hasDashboard) {
+    // Dashboard with cards
+    imports.add('Card');
+    if (has('Grid')) imports.add('Grid');
+    if (has('Inline')) imports.add('Inline');
+
+    const layout = has('Grid') ? 'Grid' : 'Inline';
+    contentBlock = `      <${layout} ${has('Grid') ? 'columns={3} ' : ''}gap="medium" style={{ padding: 'var(--ink-spacing-300)' }}>
+        <Card>
+          <Card.Header title="Metric A" />
+          <Card.Body>Content here</Card.Body>
+        </Card>
+        <Card>
+          <Card.Header title="Metric B" />
+          <Card.Body>Content here</Card.Body>
+        </Card>
+        <Card>
+          <Card.Header title="Metric C" />
+          <Card.Body>Content here</Card.Body>
+        </Card>
+      </${layout}>`;
+  } else {
+    // Generic content placeholder
+    imports.add('Stack');
+    contentBlock = `      <Stack gap="medium" style={{ padding: 'var(--ink-spacing-300)' }}>
+        {/* Your content here */}
+      </Stack>`;
+  }
+
+  // ── Modal (added as bonus if present) ────────────────────────────
+  let modalBlock = '';
+  if (hasModal) {
+    imports.add('Modal');
+    if (has('Button')) imports.add('Button');
+    stateBlock = "  const [modalOpen, setModalOpen] = useState(false);\n";
+
+    modalBlock = `
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Example Modal"
+      >
+        <p>Modal content goes here.</p>
+      </Modal>`;
+  }
+
+  // ── Tabs wrapper (if present, wrap content) ──────────────────────
+  if (hasTabs) {
+    imports.add('Tabs');
+    stateBlock += "  const [activeTab, setActiveTab] = useState('tab1');\n";
+
+    contentBlock = `      <Tabs
+        items={[
+          { id: 'tab1', label: 'Overview' },
+          { id: 'tab2', label: 'Details' },
+          { id: 'tab3', label: 'History' },
+        ]}
+        activeId={activeTab}
+        onActivate={setActiveTab}
+      />
+${contentBlock}`;
+  }
+
+  // ── Assemble the full file ───────────────────────────────────────
+  const needsState = stateBlock.length > 0;
+  const reactImport = needsState ? "import { useState } from 'react';\n" : '';
+  const dsImport = `import { ${[...imports].sort().join(', ')} } from '@/design-system';`;
+
+  const bodyParts = [headerBlock, contentBlock, modalBlock].filter(Boolean);
+
+  let body: string;
+  if (hasShell) {
+    body = `${shellOpen}\n${bodyParts.join('\n')}\n${shellClose}`;
+  } else {
+    // No shell — wrap in a div with padding
+    body = bodyParts.length === 1
+      ? bodyParts[0]
+      : `    <div style={{ padding: 'var(--ink-spacing-300)' }}>\n${bodyParts.join('\n')}\n    </div>`;
+  }
+
+  return `${reactImport}${dsImport}
+${topLevelCode}
+export default function App() {
+${stateBlock}  return (
+${body}
   );
 }
 `;
+}
 
 const INDEX_CSS_WITH_FONTS = `@import './design-system/1-tokens/tokens.css';
 @import './styles/fonts.css';
@@ -364,18 +584,18 @@ export function registerScaffoldProject(
       }
 
       // ── 5. Generate boilerplate ────────────────────────────────────
+      const componentCount = allResolved.size;
+      const componentNames = [...allResolved.values()].map((c) => c.name).sort();
+
       const boilerplateFiles: Record<string, string> = {
         'package.json': packageJson(projectName),
         'vite.config.ts': VITE_CONFIG,
         'tsconfig.json': TSCONFIG,
         'index.html': indexHtml(projectName),
         'src/main.tsx': MAIN_TSX,
-        'src/App.tsx': APP_TSX,
+        'src/App.tsx': generateAppTsx(new Set(componentNames)),
         'src/index.css': includeFonts ? INDEX_CSS_WITH_FONTS : INDEX_CSS_NO_FONTS,
       };
-
-      const componentCount = allResolved.size;
-      const componentNames = [...allResolved.values()].map((c) => c.name).sort();
 
       // Semantic event
       tracker.emit({

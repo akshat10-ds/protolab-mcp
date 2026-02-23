@@ -23,6 +23,7 @@ import { registerValidateUsage } from '@/src/tools/validate-usage';
 import { registerBuildPrototypePrompt } from '@/src/prompts/build-prototype';
 import { registerFigmaToCodePrompt } from '@/src/prompts/figma-to-code';
 import { registerFindComponentPrompt } from '@/src/prompts/find-component';
+import { registerPlanPrototypePrompt } from '@/src/prompts/plan-prototype';
 
 // Initialize data layer from bundle (module-level, shared across requests)
 const registry = new Registry(
@@ -53,10 +54,11 @@ const handler = createMcpHandler(
     registerScaffoldProject(server, registry, sourceReader, resolver, tracker);
     registerValidateUsage(server, registry, tracker);
 
-    // Register prompts (3 total)
+    // Register prompts (4 total)
     registerBuildPrototypePrompt(server, registry);
     registerFigmaToCodePrompt(server, registry);
     registerFindComponentPrompt(server, registry);
+    registerPlanPrototypePrompt(server, registry);
 
     // Register resources (3 total)
     server.resource('component-catalog', 'ink://catalog', async (uri) => {
@@ -113,7 +115,10 @@ const handler = createMcpHandler(
     instructions: [
       'Ink Design System — 63 components across 6 layers (layouts → patterns → composites → primitives → utilities → tokens).',
       '',
-      'START WITH A PROMPT, not a tool:',
+      'START HERE:',
+      '• plan_prototype({description}) — THE recommended entry point. Collaborative workflow: analyzes input (Figma URL, screenshot, or description), maps to Ink components, generates ASCII layout plan for user approval, then scaffolds a complete runnable project. Works with Figma MCP tools when available.',
+      '',
+      'OTHER PROMPTS:',
       '• build_prototype({description}) — self-contained guide with component APIs, design tokens, code template, and a reference example. Everything you need to write correct code.',
       '• find_component({need}) — finds matching components with full API details (import, props, gotchas, examples). No follow-up tool calls needed.',
       '• figma_to_code — translates Figma designs into Ink components with token mappings and component index.',

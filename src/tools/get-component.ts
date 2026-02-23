@@ -25,7 +25,12 @@ export function registerGetComponent(
     withTracking(tracker, 'get_component', server, async ({ name, detail }) => {
       const meta = registry.getComponent(name);
       if (!meta) {
-        const suggestions = registry.searchComponents(name).slice(0, 5);
+        let suggestions = registry.searchComponents(name).slice(0, 5);
+
+        // Fallback: try Levenshtein distance matching when search returns empty
+        if (suggestions.length === 0) {
+          suggestions = registry.fuzzyMatch(name, 3).slice(0, 5);
+        }
 
         // Semantic event — not found
         tracker.emit({

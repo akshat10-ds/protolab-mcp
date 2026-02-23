@@ -50,4 +50,25 @@ describe('Search quality — golden assertions', () => {
     expect(top3, `Top 3 for "table": ${top3.join(', ')}`).toContain('DataTable');
     expect(top5, `Top 5 for "table" should not include Tabs: ${top5.join(', ')}`).not.toContain('Tabs');
   });
+
+  test('"dialog popup overlay" → Modal #1, Drawer in top 5', () => {
+    const top5 = topN('dialog popup overlay', 5);
+    expect(top5[0], `#1 for "dialog popup overlay": ${top5[0]}`).toBe('Modal');
+    expect(top5, `Top 5 for "dialog popup overlay": ${top5.join(', ')}`).toContain('Drawer');
+  });
+
+  test('"action menu in table row" → Dropdown in top 3', () => {
+    const top3 = topN('action menu in table row', 3);
+    expect(top3, `Top 3 for "action menu in table row": ${top3.join(', ')}`).toContain('Dropdown');
+  });
+
+  test('"column visibility toggle" → DataTable in top 5', () => {
+    const top5 = topN('column visibility toggle', 5);
+    expect(top5, `Top 5 for "column visibility toggle": ${top5.join(', ')}`).toContain('DataTable');
+  });
+
+  test('"form input validation error" → ComboBox in top 5', () => {
+    const top5 = topN('form input validation error', 5);
+    expect(top5, `Top 5 for "form input validation error": ${top5.join(', ')}`).toContain('ComboBox');
+  });
 });

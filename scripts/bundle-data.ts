@@ -118,6 +118,10 @@ function buildBundleFromSource(): BundleData {
   const registry = JSON.parse(readFileSync(registryPath, 'utf-8'));
   console.log(`Registry: ${registry.totalComponents} components`);
 
+  // Enrich metadata with curated aliases and useCases not present in upstream
+  enrichComponentMetadata(registry);
+  console.log(`Metadata enrichment: applied curated aliases/useCases`);
+
   // Source files
   const sources: Record<string, SourceFile[]> = {};
   let totalFiles = 0;
@@ -150,6 +154,19 @@ function buildBundleFromSource(): BundleData {
     content: readFileSync(tokensPath, 'utf-8'),
   };
   console.log(`Tokens: ${tokens.content.length} bytes`);
+
+  // Validate spacing token monotonicity
+  const spacingPattern = /--ink-spacing-(\d+):\s*(\d+)px/g;
+  const spacingTokens: { scale: number; px: number }[] = [];
+  for (const match of tokens.content.matchAll(spacingPattern)) {
+    spacingTokens.push({ scale: parseInt(match[1]), px: parseInt(match[2]) });
+  }
+  spacingTokens.sort((a, b) => a.scale - b.scale);
+  for (let i = 1; i < spacingTokens.length; i++) {
+    if (spacingTokens[i].px < spacingTokens[i - 1].px) {
+      console.warn(`  Warning: Non-monotonic spacing tokens: --ink-spacing-${spacingTokens[i - 1].scale} (${spacingTokens[i - 1].px}px) > --ink-spacing-${spacingTokens[i].scale} (${spacingTokens[i].px}px)`);
+    }
+  }
 
   // Utility
   const utilPath = join(PROTOLAB_ROOT, 'src/lib/utils.ts');
@@ -205,6 +222,37 @@ function buildBundleFromSource(): BundleData {
   }
 
   return { registry, sources, tokens, utility, propDetails };
+}
+
+/**
+ * Enrich component metadata with curated aliases and useCases
+ * that the upstream source doesn't include but improve search relevance.
+ */
+function enrichComponentMetadata(registry: { components: Record<string, { aliases?: string[]; useCases?: string[] }> }) {
+  const ENRICHMENTS: Record<string, { aliases?: string[]; useCases?: string[] }> = {
+    Drawer: {
+      aliases: ['overlay panel', 'bottom sheet', 'dialog panel'],
+      useCases: ['form-overlay', 'detail-overlay', 'mobile-dialog'],
+    },
+    ComboBox: {
+      aliases: ['form select', 'validated dropdown', 'searchable input'],
+      useCases: ['form-field', 'validated-selection', 'search-filter'],
+    },
+    DataTable: {
+      useCases: ['column-visibility', 'row-selection', 'inline-editing'],
+    },
+  };
+
+  for (const [name, additions] of Object.entries(ENRICHMENTS)) {
+    const meta = registry.components[name];
+    if (!meta) continue;
+    if (additions.aliases) {
+      meta.aliases = [...(meta.aliases || []), ...additions.aliases];
+    }
+    if (additions.useCases) {
+      meta.useCases = [...(meta.useCases || []), ...additions.useCases];
+    }
+  }
 }
 
 /**

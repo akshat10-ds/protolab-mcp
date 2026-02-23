@@ -13,8 +13,37 @@ interface ValidationIssue {
 
 // Module-level regex constants (avoids recompilation per request)
 const JSX_COMPONENT_RE = /<([A-Z][A-Za-z0-9]*)/g;
-const HARDCODED_COLOR_RE = /(?:color|background|border)(?:-color)?:\s*#[0-9a-fA-F]{3,8}/g;
-const HARDCODED_SPACING_RE = /(?:padding|margin|gap):\s*\d+px/g;
+const HARDCODED_COLOR_RE = /(?:color|background|border)(?:[Cc]olor)?(?:-color)?:\s*['"]?#[0-9a-fA-F]{3,8}['"]?/g;
+const HARDCODED_SPACING_RE = /(?:padding|margin|gap|[Pp]adding|[Mm]argin|[Gg]ap)(?:Top|Right|Bottom|Left|Inline|Block)?:\s*['"]?\d+px['"]?/g;
+
+/** Extract JSX attribute blocks for a component, handling nested {} and strings */
+function extractJsxAttrBlocks(code: string, componentName: string): string[] {
+  const tagRe = new RegExp(`<${componentName}\\s`, 'g');
+  const blocks: string[] = [];
+  for (const match of code.matchAll(tagRe)) {
+    let i = match.index! + match[0].length;
+    let depth = 0;
+    let inStr: string | null = null;
+    const start = i;
+    while (i < code.length) {
+      const ch = code[i];
+      if (inStr) {
+        if (ch === inStr && code[i - 1] !== '\\') inStr = null;
+      } else if (ch === '"' || ch === "'" || ch === '`') {
+        inStr = ch;
+      } else if (ch === '{') {
+        depth++;
+      } else if (ch === '}') {
+        depth--;
+      } else if ((ch === '>' || (ch === '/' && code[i + 1] === '>')) && depth === 0) {
+        blocks.push(code.slice(start, i));
+        break;
+      }
+      i++;
+    }
+  }
+  return blocks;
+}
 
 export function registerValidateUsage(
   server: McpServer,
@@ -84,7 +113,60 @@ export function registerValidateUsage(
           }
         }
 
-        // 4. Composition checks
+        // 4. Unknown prop detection
+        // Skip if component extends HTMLAttributes (too many valid HTML attrs)
+        const extendsHTML = meta.propDetails?.extends &&
+          /HTMLAttributes/i.test(meta.propDetails.extends);
+        if (meta.propDetails && !extendsHTML) {
+          const knownProps = new Set([
+            ...meta.propDetails.props.map(p => p.name),
+            'children', 'className', 'style', 'key', 'ref', 'id',
+            'data-testid', 'aria-label', 'aria-describedby',
+            'onClick', 'onChange', 'onBlur', 'onFocus', 'onSubmit', 'onKeyDown', 'onKeyUp', 'onMouseEnter', 'onMouseLeave',
+          ]);
+
+          // Extract JSX attribute blocks with proper brace/string handling
+          const attrBlocks = extractJsxAttrBlocks(code, name);
+          for (const attrsBlock of attrBlocks) {
+            // Match prop names: word= or word /> or word> (boolean props)
+            const propNames = [...attrsBlock.matchAll(/\b([a-zA-Z][a-zA-Z0-9]*)\s*(?==|\/?>)/g)]
+              .map(m => m[1])
+              .filter(p => p !== name); // exclude component name itself
+
+            for (const prop of propNames) {
+              if (!knownProps.has(prop) && !prop.startsWith('data') && !prop.startsWith('aria')) {
+                issues.push({
+                  severity: 'warning',
+                  component: name,
+                  message: `Unknown prop "${prop}" on <${name}>`,
+                  suggestion: `Known props: ${meta.propDetails!.props.slice(0, 8).map(p => p.name).join(', ')}${meta.propDetails!.props.length > 8 ? '...' : ''}`,
+                });
+              }
+            }
+          }
+        }
+
+        // 5. Prop value validation for enums
+        if (meta.propDetails) {
+          for (const propDef of meta.propDetails.props) {
+            if (!propDef.values || propDef.values.length === 0) continue;
+            // Match: propName="value" or propName='value'
+            const valuePattern = new RegExp(`<${name}[^>]*\\b${propDef.name}=["']([^"']+)["']`, 'gs');
+            for (const match of code.matchAll(valuePattern)) {
+              const usedValue = match[1];
+              if (!propDef.values.includes(usedValue)) {
+                issues.push({
+                  severity: 'warning',
+                  component: name,
+                  message: `Invalid value "${usedValue}" for prop "${propDef.name}" on <${name}>`,
+                  suggestion: `Valid values: ${propDef.values.join(', ')}`,
+                });
+              }
+            }
+          }
+        }
+
+        // 6. Composition checks
         if (meta.composition) {
           const comp = meta.composition;
 
@@ -112,7 +194,7 @@ export function registerValidateUsage(
         }
       }
 
-      // 5. Check for hardcoded colors (suggest tokens)
+      // 7. Check for hardcoded colors (suggest tokens)
       const hardcodedColors = code.match(HARDCODED_COLOR_RE);
       if (hardcodedColors && hardcodedColors.length > 0) {
         issues.push({
@@ -123,7 +205,7 @@ export function registerValidateUsage(
         });
       }
 
-      // 6. Check for hardcoded pixel spacing (suggest tokens)
+      // 8. Check for hardcoded pixel spacing (suggest tokens)
       const hardcodedSpacing = code.match(HARDCODED_SPACING_RE);
       if (hardcodedSpacing && hardcodedSpacing.length > 0) {
         issues.push({
