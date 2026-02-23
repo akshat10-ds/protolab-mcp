@@ -121,6 +121,17 @@ export class Tracker {
           event.durationMs < 1000 ? '500-1000ms' :
           '>1000ms';
         pipe.hincrby('mcp:http:duration:buckets', bucket, 1);
+
+        // Unique user tracking via IP hash (only for MCP requests, not page loads)
+        if (event.clientHash && event.transport !== 'page') {
+          pipe.pfadd('mcp:unique:all', event.clientHash);
+          pipe.pfadd(`mcp:unique:daily:${day}`, event.clientHash);
+          pipe.expire(`mcp:unique:daily:${day}`, DAY_TTL);
+          pipe.pfadd(`mcp:unique:weekly:${week}`, event.clientHash);
+          pipe.expire(`mcp:unique:weekly:${week}`, WEEK_TTL);
+          pipe.pfadd(`mcp:unique:monthly:${month}`, event.clientHash);
+          pipe.expire(`mcp:unique:monthly:${month}`, MONTH_TTL);
+        }
         break;
       }
 
@@ -152,15 +163,15 @@ export class Tracker {
         pipe.incr('mcp:session:total');
         pipe.hincrby('mcp:session:clients', event.clientName || 'unknown', 1);
 
-        // Unique user tracking via HyperLogLog
-        const uid = this.sessionId || `anon-${Date.now()}`;
-        pipe.pfadd('mcp:unique:all', uid);
-        pipe.pfadd(`mcp:unique:daily:${day}`, uid);
-        pipe.expire(`mcp:unique:daily:${day}`, DAY_TTL);
-        pipe.pfadd(`mcp:unique:weekly:${week}`, uid);
-        pipe.expire(`mcp:unique:weekly:${week}`, WEEK_TTL);
-        pipe.pfadd(`mcp:unique:monthly:${month}`, uid);
-        pipe.expire(`mcp:unique:monthly:${month}`, MONTH_TTL);
+        // Unique session tracking (separate from unique users)
+        const sid = this.sessionId || `session-${Date.now()}`;
+        pipe.pfadd('mcp:sessions:all', sid);
+        pipe.pfadd(`mcp:sessions:daily:${day}`, sid);
+        pipe.expire(`mcp:sessions:daily:${day}`, DAY_TTL);
+        pipe.pfadd(`mcp:sessions:weekly:${week}`, sid);
+        pipe.expire(`mcp:sessions:weekly:${week}`, WEEK_TTL);
+        pipe.pfadd(`mcp:sessions:monthly:${month}`, sid);
+        pipe.expire(`mcp:sessions:monthly:${month}`, MONTH_TTL);
         break;
       }
 

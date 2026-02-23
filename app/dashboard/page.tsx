@@ -26,6 +26,12 @@ interface DashboardData {
     wowGrowth: number | null;
     momGrowth: number | null;
   };
+  uniqueSessions: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    allTime: number;
+  };
   components: Array<{ key: string; count: number }>;
   searches: Array<{ key: string; count: number }>;
   sessions: {
@@ -260,6 +266,10 @@ export default function DashboardPage() {
           {/* ── Adoption & Growth ── */}
           <SectionTitle>adoption --verbose</SectionTitle>
           <div style={st.panel}>
+            <div style={{ ...st.adoptionLabel, marginBottom: 8, fontSize: 12 }}>
+              <span style={{ color: 'var(--t-cyan)' }}>unique users</span>
+              <span style={{ color: 'var(--t-text-muted)', margin: '0 6px' }}>(by IP)</span>
+            </div>
             <div style={st.adoptionGrid}>
               <div style={st.adoptionItem}>
                 <span style={st.adoptionLabel}>today</span>
@@ -276,6 +286,28 @@ export default function DashboardPage() {
               <div style={st.adoptionItem}>
                 <span style={st.adoptionLabel}>all-time</span>
                 <span style={st.adoptionValue}>{data.uniqueUsers.allTime}</span>
+              </div>
+            </div>
+            <div style={{ ...st.adoptionLabel, marginBottom: 8, marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--t-border-subtle)', fontSize: 12 }}>
+              <span style={{ color: 'var(--t-cyan)' }}>unique sessions</span>
+              <span style={{ color: 'var(--t-text-muted)', margin: '0 6px' }}>(MCP connections)</span>
+            </div>
+            <div style={st.adoptionGrid}>
+              <div style={st.adoptionItem}>
+                <span style={st.adoptionLabel}>today</span>
+                <span style={st.adoptionValue}>{data.uniqueSessions?.today ?? 0}</span>
+              </div>
+              <div style={st.adoptionItem}>
+                <span style={st.adoptionLabel}>this week</span>
+                <span style={st.adoptionValue}>{data.uniqueSessions?.thisWeek ?? 0}</span>
+              </div>
+              <div style={st.adoptionItem}>
+                <span style={st.adoptionLabel}>this month</span>
+                <span style={st.adoptionValue}>{data.uniqueSessions?.thisMonth ?? 0}</span>
+              </div>
+              <div style={st.adoptionItem}>
+                <span style={st.adoptionLabel}>all-time</span>
+                <span style={st.adoptionValue}>{data.uniqueSessions?.allTime ?? 0}</span>
               </div>
             </div>
             <div style={st.growthRow}>

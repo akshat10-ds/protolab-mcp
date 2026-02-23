@@ -5,10 +5,25 @@
  * and transport type, then emits an http_request event via Tracker.
  */
 
+import { createHash } from 'node:crypto';
 import { Tracker } from './tracker';
 
 // Module-level singleton tracker for HTTP events
 const httpTracker = new Tracker();
+
+/** Extract client IP from standard proxy headers (Vercel, Cloudflare, etc.) */
+function getClientIp(req: Request): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+/** Hash IP for privacy — we never store raw IPs */
+function hashIp(ip: string): string {
+  return createHash('sha256').update(ip).digest('hex').slice(0, 16);
+}
 
 type RouteContext = { params: Promise<{ transport: string }> };
 type RouteHandler = (req: Request, context: RouteContext) => Promise<Response>;
@@ -31,6 +46,7 @@ export function trackHttpRequest(handler: RouteHandler): RouteHandler {
   return async (req: Request, context: RouteContext): Promise<Response> => {
     const start = Date.now();
     const url = new URL(req.url);
+    const clientHash = hashIp(getClientIp(req));
 
     let response: Response;
     try {
@@ -47,6 +63,7 @@ export function trackHttpRequest(handler: RouteHandler): RouteHandler {
         durationMs,
         userAgent: req.headers.get('user-agent') || '',
         transport: detectTransport(req, url.pathname),
+        clientHash,
       });
       throw err;
     }
@@ -61,6 +78,7 @@ export function trackHttpRequest(handler: RouteHandler): RouteHandler {
       durationMs,
       userAgent: req.headers.get('user-agent') || '',
       transport: detectTransport(req, url.pathname),
+      clientHash,
     });
 
     return response;

@@ -86,6 +86,8 @@ export interface HttpRequestEvent extends EventBase {
   durationMs: number;
   userAgent: string;
   transport: 'sse' | 'jsonrpc' | 'page';
+  /** SHA-256 prefix of client IP — used for unique user counting without storing raw IPs */
+  clientHash?: string;
 }
 
 // ── Union type ──────────────────────────────────────────────────────

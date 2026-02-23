@@ -114,13 +114,19 @@ export async function GET() {
     p2.pfcount(`mcp:unique:daily:${dk}`); // 28..41
   }
 
-  // Unique user aggregates
+  // Unique user aggregates (IP-hash based)
   p2.pfcount('mcp:unique:all');                     // 42
   p2.pfcount(`mcp:unique:daily:${today}`);          // 43
   p2.pfcount(`mcp:unique:weekly:${thisWeek}`);      // 44
   p2.pfcount(`mcp:unique:monthly:${thisMonth}`);    // 45
   p2.pfcount(`mcp:unique:weekly:${lastWeek}`);      // 46
   p2.pfcount(`mcp:unique:monthly:${lastMonth}`);    // 47
+
+  // Unique session aggregates (MCP session ID based)
+  p2.pfcount('mcp:sessions:all');                   // 48
+  p2.pfcount(`mcp:sessions:daily:${today}`);        // 49
+  p2.pfcount(`mcp:sessions:weekly:${thisWeek}`);    // 50
+  p2.pfcount(`mcp:sessions:monthly:${thisMonth}`);  // 51
 
   const r2 = await p2.exec();
 
@@ -158,6 +164,12 @@ export async function GET() {
   const uniqueThisMonth = num(r2[45]);
   const uniqueLastWeek = num(r2[46]);
   const uniqueLastMonth = num(r2[47]);
+
+  // Unique sessions
+  const sessionsAllTime = num(r2[48]);
+  const sessionsToday = num(r2[49]);
+  const sessionsThisWeek = num(r2[50]);
+  const sessionsThisMonth = num(r2[51]);
 
   const wowGrowth = uniqueLastWeek > 0
     ? Math.round(((uniqueThisWeek - uniqueLastWeek) / uniqueLastWeek) * 100)
@@ -211,6 +223,12 @@ export async function GET() {
       allTime: uniqueAllTime,
       wowGrowth,
       momGrowth,
+    },
+    uniqueSessions: {
+      today: sessionsToday,
+      thisWeek: sessionsThisWeek,
+      thisMonth: sessionsThisMonth,
+      allTime: sessionsAllTime,
     },
     components: sortedHash(r1[11] as Record<string, string> | null),
     searches: sortedHash(r1[12] as Record<string, string> | null),
