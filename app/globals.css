@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --t-bg: #08080A;
+  --t-surface: #111114;
+  --t-chrome: #18181B;
+  --t-border: #27272A;
+  --t-border-subtle: #1C1C1F;
+
+  --t-text: #D4D4D8;
+  --t-text-bright: #FAFAFA;
+  --t-text-dim: #52525B;
+  --t-text-muted: #52525B;
+
+  --t-green: #4ADE80;
+  --t-amber: #FBBF24;
+  --t-blue: #60A5FA;
+  --t-cyan: #22D3EE;
+
+  --t-font: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --t-radius: 10px;
+  --t-radius-sm: 6px;
+
+  --t-shadow-terminal: 0 25px 60px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03) inset;
+}
+
+[data-theme="light"] {
+  --t-bg: #F0F0F2;
+  --t-surface: #FFFFFF;
+  --t-chrome: #E4E4E7;
+  --t-border: #C4C4CC;
+  --t-border-subtle: #D4D4D8;
+
+  --t-text: #2D2D33;
+  --t-text-bright: #09090B;
+  --t-text-dim: #52525B;
+  --t-text-muted: #71717A;
+
+  --t-green: #15803D;
+  --t-amber: #B45309;
+  --t-blue: #1D4ED8;
+  --t-cyan: #0E7490;
+
+  --t-shadow-terminal: 0 25px 60px -12px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+html {
+  font-family: var(--t-font);
+  background: var(--t-bg);
+  color: var(--t-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--t-green);
+  color: #000;
+}
+
+[data-theme="light"] ::selection {
+  color: #fff;
+}
+
+/* ── Animations ── */
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes gentleBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+/* ── Terminal scanlines ── */
+
+.term-body {
+  position: relative;
+}
+
+.term-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.02) 2px,
+    rgba(0, 0, 0, 0.02) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+[data-theme="light"] .term-body::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.015) 2px,
+    rgba(0, 0, 0, 0.015) 4px
+  );
+}
+
+/* ── Interactive: command buttons ── */
+
+.term-cmd:hover {
+  background: rgba(96, 165, 250, 0.1) !important;
+}
+
+/* ── Interactive: example rows ── */
+
+.example-row {
+  position: relative;
+}
+
+.example-row::before {
+  content: '>';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--t-green);
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.example-row:hover {
+  background: var(--t-border-subtle) !important;
+}
+
+.example-row:hover::before {
+  opacity: 1;
+}
+
+/* ── Interactive: copy / tab buttons ── */
+
+.copy-btn:hover {
+  border-color: var(--t-text-dim) !important;
+  color: var(--t-text) !important;
+}
+
+.tab-btn:hover {
+  color: var(--t-text) !important;
+}
+
+/* ── Interactive: theme toggle ── */
+
+.theme-toggle:hover {
+  border-color: var(--t-text-dim) !important;
+  color: var(--t-text) !important;
+}
+
+/* ── Interactive: scroll indicator ── */
+
+.scroll-more:hover {
+  opacity: 1 !important;
+  animation: none !important;
+  color: var(--t-text) !important;
+}
+
+/* ── Scrollbar ── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--t-border); border-radius: 3px; }
+pre::-webkit-scrollbar { height: 4px; }
+
+/* ── Responsive ── */
+
+[data-theme="light"] .ascii-art {
+  opacity: 0.7 !important;
+}
+
+@media (max-width: 640px) {
+  .ascii-art { display: none !important; }
+}

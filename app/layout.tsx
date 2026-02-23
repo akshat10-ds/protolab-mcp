@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ProtoLab MCP Server',
+  title: 'ProtoLab — Prototype any DocuSign page with AI',
   description:
-    'Remote MCP server for the Ink Design System — 63 components, 8 tools, 3 prompts. One URL, no installs.',
+    'Describe what you want to build. Your AI knows the entire Ink Design System and builds working prototypes that look like the real product.',
 };
 
 export default function RootLayout({
