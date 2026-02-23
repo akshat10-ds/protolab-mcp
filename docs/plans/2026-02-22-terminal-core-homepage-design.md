@@ -65,7 +65,7 @@ Dark background, monospace-inflected typography. Each section prefixed with a `$
 - Three key-value items:
   ```
   components    Real Ink components, not generic HTML
-  layouts       Knows DocuSign page composition patterns
+  layouts       Knows Docusign page composition patterns
   iteration     "Move the filters" → rebuilt in seconds
   ```
 

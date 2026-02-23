@@ -6,6 +6,19 @@ import type { DependencyResolver } from '../data/dependency-resolver';
 import type { Tracker } from '../analytics/tracker';
 import { withTracking } from '../analytics/wrapper';
 import { getSourceBaseUrl, getSiteBaseUrl } from '../data/base-url';
+import {
+  parseIconPaths,
+  scanUsedIcons,
+  generateTrimmedIconPaths,
+  COMMON_ICONS,
+} from '../data/icon-utils';
+
+// ── Font files served from public/ ───────────────────────────────────
+const FONT_VARIANTS = [
+  'Regular', 'Light', 'Medium', 'SemiBold', 'Bold', 'Black',
+  'Italic', 'LightItalic', 'MediumItalic', 'SemiBoldItalic', 'BoldItalic', 'BlackItalic',
+];
+const FONT_FILES = FONT_VARIANTS.map(v => `fonts/DSIndigo-${v}/DSIndigo-${v}.woff2`);
 
 // ── Layer directory names ────────────────────────────────────────────
 const LAYER_DIR: Record<number, string> = {
@@ -115,6 +128,7 @@ const APP_TSX = `export default function App() {
 `;
 
 const INDEX_CSS = `@import './design-system/1-tokens/tokens.css';
+@import './styles/fonts.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -136,13 +150,32 @@ img, svg { display: block; max-width: 100%; }
 
 // ── Barrel export generation ─────────────────────────────────────────
 
-function componentBarrel(componentName: string): string {
-  return `export { ${componentName} } from './${componentName}';\n`;
+/**
+ * Generate a barrel file for a component directory.
+ * For host components that have virtual children (e.g. Typography hosts Heading+Text),
+ * export both the host and virtual names from the same directory.
+ */
+function componentBarrel(componentName: string, virtualExports?: string[]): string {
+  const names = [componentName, ...(virtualExports ?? [])];
+  return `export { ${names.join(', ')} } from './${componentName}';\n`;
 }
 
-function layerBarrel(componentNames: string[]): string {
-  return componentNames
-    .map((name) => `export { ${name} } from './${name}';`)
+/**
+ * Generate a layer barrel. Virtual components are routed to their host directory.
+ * @param componentNames - all component names in this layer
+ * @param virtualToHost - map of virtual component name → host component name
+ */
+function layerBarrel(componentNames: string[], virtualToHost: Map<string, string>): string {
+  // Group exports by directory: host components + virtual components pointing to same dir
+  const dirExports = new Map<string, string[]>();
+  for (const name of componentNames) {
+    const dir = virtualToHost.get(name) ?? name;
+    const exports = dirExports.get(dir) ?? [];
+    exports.push(name);
+    dirExports.set(dir, exports);
+  }
+  return [...dirExports.entries()]
+    .map(([dir, names]) => `export { ${names.join(', ')} } from './${dir}';`)
     .join('\n') + '\n';
 }
 
@@ -239,23 +272,73 @@ export function registerScaffoldProject(
         layerComponents.set(layer, names.sort());
       }
 
-      // ── 3. Generate barrel exports ─────────────────────────────────
+      // ── 3. Generate barrel exports (virtual-component-aware) ───────
       const barrelFiles: Record<string, string> = {};
 
+      // Build virtual → host mapping from registry metadata
+      const virtualToHost = new Map<string, string>();
+      for (const { name } of allResolved.values()) {
+        const meta = registry.getComponent(name);
+        if (meta?.sourceComponent) {
+          virtualToHost.set(name, meta.sourceComponent);
+        }
+      }
+
+      // Group virtual components by their host for barrel generation
+      const hostVirtuals = new Map<string, string[]>();
+      for (const [virtual, host] of virtualToHost) {
+        const list = hostVirtuals.get(host) ?? [];
+        list.push(virtual);
+        hostVirtuals.set(host, list);
+      }
+
       for (const { name, layer } of allResolved.values()) {
+        // Skip virtual components — they share their host's directory
+        if (virtualToHost.has(name)) continue;
+
         const layerDir = LAYER_DIR[layer];
         const barrelPath = `src/design-system/${layerDir}/${name}/index.ts`;
-        barrelFiles[barrelPath] = componentBarrel(name);
+        const virtualExports = hostVirtuals.get(name);
+        barrelFiles[barrelPath] = componentBarrel(name, virtualExports);
       }
 
       for (const [layer, names] of layerComponents) {
         const dir = LAYER_DIR[layer];
-        barrelFiles[`src/design-system/${dir}/index.ts`] = layerBarrel(names);
+        barrelFiles[`src/design-system/${dir}/index.ts`] = layerBarrel(names, virtualToHost);
       }
 
       barrelFiles['src/design-system/index.ts'] = mainBarrel(layerComponents);
 
-      // ── 4. Generate boilerplate ────────────────────────────────────
+      // ── 4. Build trimmed iconPaths if Icon is in the resolved set ──
+      let trimmedIconPaths: string | null = null;
+      if (allResolved.has('Icon')) {
+        // Collect all component source contents to scan for icon usage
+        const allSourceContents: string[] = [];
+        for (const { name, layer } of allResolved.values()) {
+          const files = sourceReader.getComponentFiles(name, layer);
+          for (const f of files) {
+            allSourceContents.push(f.content);
+          }
+        }
+
+        // Scan for icon names used in component source code
+        const usedIcons = scanUsedIcons(allSourceContents);
+
+        // Merge with common icons safety net
+        for (const icon of COMMON_ICONS) {
+          usedIcons.add(icon);
+        }
+
+        // Parse full iconPaths.ts and generate trimmed version
+        const iconFiles = sourceReader.getComponentFiles('Icon', 3);
+        const iconPathsFile = iconFiles.find(f => f.path.endsWith('iconPaths.ts'));
+        if (iconPathsFile) {
+          const allIcons = parseIconPaths(iconPathsFile.content);
+          trimmedIconPaths = generateTrimmedIconPaths(usedIcons, allIcons, getSourceBaseUrl());
+        }
+      }
+
+      // ── 5. Generate boilerplate ────────────────────────────────────
       const boilerplateFiles: Record<string, string> = {
         'package.json': packageJson(projectName),
         'vite.config.ts': VITE_CONFIG,
@@ -284,12 +367,21 @@ export function registerScaffoldProject(
         const seenPaths = new Set<string>();
 
         for (const { name, layer } of allResolved.values()) {
+          // Skip virtual components whose host is already in the resolved set (avoids duplicate files)
+          const host = virtualToHost.get(name);
+          if (host && allResolved.has(host)) continue;
+
           const componentFiles = sourceReader.getComponentFiles(name, layer);
           for (const file of componentFiles) {
             const destPath = `src/${file.path}`;
             if (!seenPaths.has(destPath)) {
               seenPaths.add(destPath);
-              files[destPath] = file.content;
+              // Replace full iconPaths.ts with trimmed version
+              if (trimmedIconPaths && file.path.endsWith('iconPaths.ts')) {
+                files[destPath] = trimmedIconPaths;
+              } else {
+                files[destPath] = file.content;
+              }
             }
           }
         }
@@ -306,6 +398,7 @@ export function registerScaffoldProject(
 
         Object.assign(files, barrelFiles, boilerplateFiles);
 
+        const siteUrl = getSiteBaseUrl();
         const result = {
           projectName,
           mode: 'inline' as const,
@@ -315,12 +408,19 @@ export function registerScaffoldProject(
           ...(notFound.length > 0 && { notFound }),
           instructions: [
             `1. Write all files to a '${projectName}' directory`,
-            `2. cd ${projectName} && npm install`,
-            '3. npm run dev',
-            '4. Write your prototype in src/App.tsx',
-            `5. Import components from '@/design-system'`,
+            '2. Fetch "fonts.css" URL and write to src/styles/fonts.css',
+            '3. Fetch each "fontFiles" URL and write to its destPath (public/fonts/)',
+            `4. cd ${projectName} && npm install`,
+            '5. npm run dev',
+            '6. Write your prototype in src/App.tsx',
+            `7. Import components from '@/design-system'`,
           ].join('\n'),
           files,
+          fonts: { destPath: 'src/styles/fonts.css', url: `${siteUrl}/fonts.css` },
+          fontFiles: FONT_FILES.map(f => ({
+            destPath: `public/${f}`,
+            url: `${siteUrl}/${f}`,
+          })),
         };
 
         return {
@@ -333,16 +433,26 @@ export function registerScaffoldProject(
 
       // Build source file URL list (component files + infrastructure)
       const sourceFiles: { destPath: string; url: string }[] = [];
+      const generatedFiles: Record<string, string> = {};
       const seenPaths = new Set<string>();
 
       for (const { name, layer } of allResolved.values()) {
+        // Skip virtual components whose host is already in the resolved set
+        const host = virtualToHost.get(name);
+        if (host && allResolved.has(host)) continue;
+
         const componentFiles = sourceReader.getComponentFiles(name, layer);
         for (const file of componentFiles) {
           const destPath = `src/${file.path}`;
           if (!seenPaths.has(destPath)) {
             seenPaths.add(destPath);
-            const staticPath = toStaticPath(file.path);
-            sourceFiles.push({ destPath, url: `${baseUrl}/${staticPath}` });
+            // Replace full iconPaths.ts with trimmed version (inline, since it's generated)
+            if (trimmedIconPaths && file.path.endsWith('iconPaths.ts')) {
+              generatedFiles[destPath] = trimmedIconPaths;
+            } else {
+              const staticPath = toStaticPath(file.path);
+              sourceFiles.push({ destPath, url: `${baseUrl}/${staticPath}` });
+            }
           }
         }
       }
@@ -351,27 +461,33 @@ export function registerScaffoldProject(
         projectName,
         mode: 'urls' as const,
         baseUrl,
-        totalFiles: Object.keys(boilerplateFiles).length + Object.keys(barrelFiles).length + sourceFiles.length + 2, // +2 for tokens + utils
+        totalFiles: Object.keys(boilerplateFiles).length + Object.keys(barrelFiles).length + sourceFiles.length + Object.keys(generatedFiles).length + 2, // +2 for tokens + utils
         componentCount,
         components: componentNames,
         ...(notFound.length > 0 && { notFound }),
         instructions: [
           `1. Create a '${projectName}' directory`,
-          '2. Write the "boilerplate" and "barrels" files directly (content is included)',
+          '2. Write the "boilerplate", "barrels", and "generatedFiles" directly (content is included)',
           '3. For each entry in "sourceFiles", fetch the URL and write to the destPath',
-          '4. Fetch the infrastructure URLs and write tokens.css + utils.ts',
-          `5. cd ${projectName} && npm install && npm run dev`,
-          '6. Write your prototype in src/App.tsx',
-          `7. Import components from '@/design-system'`,
+          '4. Fetch the infrastructure URLs and write tokens.css, utils.ts, fonts.css',
+          '5. Fetch each "fontFiles" URL and write to its destPath (public/fonts/)',
+          `6. cd ${projectName} && npm install && npm run dev`,
+          '7. Write your prototype in src/App.tsx',
+          `8. Import components from '@/design-system'`,
         ].join('\n'),
         boilerplate: boilerplateFiles,
         barrels: barrelFiles,
+        ...(Object.keys(generatedFiles).length > 0 && { generatedFiles }),
         sourceFiles,
         infrastructure: {
           tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
           utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
           fonts: { destPath: 'src/styles/fonts.css', url: `${getSiteBaseUrl()}/fonts.css` },
         },
+        fontFiles: FONT_FILES.map(f => ({
+          destPath: `public/${f}`,
+          url: `${getSiteBaseUrl()}/${f}`,
+        })),
       };
 
       return {

@@ -30,6 +30,7 @@
   --t-radius-sm: 6px;
 
   --t-shadow-terminal: 0 25px 60px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  --t-logo-filter: brightness(0) invert(0.7);
 }
 
 [data-theme="light"] {
@@ -50,6 +51,7 @@
   --t-cyan: #0E7490;
 
   --t-shadow-terminal: 0 25px 60px -12px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.08);
+  --t-logo-filter: none;
 }
 
 html {

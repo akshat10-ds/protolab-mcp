@@ -1,0 +1,99 @@
+{
+  "presets": [
+    {
+      "id": "list-page",
+      "title": "List Page (Navigator Style)",
+      "keywords": ["list", "table", "agreements", "data", "manage", "browse", "navigator", "overview"],
+      "componentTree": "DocuSignShell\n├── GlobalNav (globalNav slot prop)\n├── LocalNav (localNav slot prop)\n└── AgreementTableView\n    ├── pageHeader={<PageHeader />}\n    ├── filterBar={<FilterBar />}\n    └── <DataTable columns={...} data={...} />",
+      "components": ["DocuSignShell", "GlobalNav", "LocalNav", "AgreementTableView", "PageHeader", "FilterBar", "DataTable", "Button", "Badge", "Stack"],
+      "spacingStack": [
+        { "from": "GlobalNav", "to": "Content", "token": "--ink-spacing-400", "px": 32 },
+        { "from": "PageHeader", "to": "FilterBar", "token": "--ink-spacing-200", "px": 16 },
+        { "from": "FilterBar", "to": "DataTable", "token": "--ink-spacing-300", "px": 24 }
+      ],
+      "rules": [
+        "Tables are NOT wrapped in Cards — render DataTable bare (Docusign convention).",
+        "FilterBar goes in the filterBar slot prop of AgreementTableView, NOT as a separate component.",
+        "DataTable is data-driven: NO children, use columns + data props.",
+        "PageHeader goes in the pageHeader slot prop of AgreementTableView.",
+        "GlobalNav and LocalNav are passed as slot prop objects to DocuSignShell, NOT as JSX children."
+      ],
+      "codeSketch": "<DocuSignShell\n  globalNav={globalNavConfig}\n  localNav={localNavConfig}\n>\n  <AgreementTableView\n    pageHeader={\n      <PageHeader\n        title=\"Agreements\"\n        actions={<Button>New Agreement</Button>}\n      />\n    }\n    filterBar={\n      <FilterBar\n        search={{ placeholder: 'Search agreements...' }}\n        quickActions={[{ label: 'Filter', onClick: () => {} }]}\n      />\n    }\n  >\n    <DataTable columns={columns} data={data} getRowKey={(row) => row.id} />\n  </AgreementTableView>\n</DocuSignShell>",
+      "showcaseConfig": {
+        "globalNav": "const globalNavItems = [\n  { id: 'home', label: 'Home' },\n  { id: 'agreements', label: 'Agreements', active: true },\n  { id: 'templates', label: 'Templates' },\n  { id: 'reports', label: 'Reports' },\n  { id: 'admin', label: 'Admin' },\n];",
+        "localNav": "const localNavSections = [\n  {\n    id: 'main',\n    items: [\n      { id: 'inbox', label: 'Inbox', count: 12 },\n      { id: 'sent', label: 'Sent' },\n      { id: 'drafts', label: 'Drafts', count: 3 },\n      { id: 'completed', label: 'Completed' },\n      { id: 'trash', label: 'Trash' },\n    ],\n  },\n];"
+      }
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard (Full-Width, No Sidebar)",
+      "keywords": ["dashboard", "home", "overview", "analytics", "stats", "metrics", "kpi"],
+      "componentTree": "DocuSignShell\n├── GlobalNav (globalNav slot prop)\n└── Stack (main content)\n    ├── PageHeader\n    ├── Grid (2-column card layout)\n    │   ├── Card (stat/widget)\n    │   ├── Card (stat/widget)\n    │   └── ...\n    └── Card (full-width chart/table)",
+      "components": ["DocuSignShell", "GlobalNav", "PageHeader", "Card", "Grid", "Stack", "Heading", "Text", "Badge", "Button"],
+      "spacingStack": [
+        { "from": "GlobalNav", "to": "Content", "token": "--ink-spacing-400", "px": 32 },
+        { "from": "PageHeader", "to": "CardGrid", "token": "--ink-spacing-300", "px": 24 },
+        { "from": "Card", "to": "Card", "token": "--ink-spacing-300", "px": 24 }
+      ],
+      "rules": [
+        "NO LocalNav sidebar — dashboards use full-width layout.",
+        "Use 2-column Grid for stat cards, full-width for tables/charts.",
+        "Each stat card: Card > Card.Body > Stack > Text(label) + Heading(value).",
+        "Page title uses Heading level={1}."
+      ],
+      "codeSketch": "<DocuSignShell globalNav={globalNavConfig}>\n  <Stack gap=\"var(--ink-spacing-300)\">\n    <PageHeader title=\"Dashboard\" />\n    <Grid columns={2} gap=\"var(--ink-spacing-300)\">\n      <Card>\n        <Card.Body>\n          <Stack gap=\"var(--ink-spacing-100)\">\n            <Text size=\"sm\" variant=\"secondary\">Total Agreements</Text>\n            <Heading level={2}>1,234</Heading>\n          </Stack>\n        </Card.Body>\n      </Card>\n      {/* More stat cards */}\n    </Grid>\n  </Stack>\n</DocuSignShell>",
+      "showcaseConfig": {
+        "globalNav": "const globalNavItems = [\n  { id: 'home', label: 'Home', active: true },\n  { id: 'agreements', label: 'Agreements' },\n  { id: 'templates', label: 'Templates' },\n  { id: 'reports', label: 'Reports' },\n  { id: 'admin', label: 'Admin' },\n];"
+      }
+    },
+    {
+      "id": "detail-page",
+      "title": "Detail Page (Single Entity View)",
+      "keywords": ["detail", "view", "agreement", "document", "entity", "single", "profile", "record"],
+      "componentTree": "DocuSignShell\n├── GlobalNav (globalNav slot prop)\n└── Stack (main content)\n    ├── Badge (status — ABOVE title)\n    ├── Heading level={1} (entity name)\n    ├── Text variant=\"secondary\" (metadata)\n    ├── Inline (action buttons)\n    ├── Tabs (optional)\n    └── Card(s) (content sections)",
+      "components": ["DocuSignShell", "GlobalNav", "PageHeader", "Stack", "Inline", "Card", "Badge", "Heading", "Text", "Button", "Tabs"],
+      "spacingStack": [
+        { "from": "GlobalNav", "to": "Content", "token": "--ink-spacing-400", "px": 32 },
+        { "from": "Badge", "to": "Heading", "token": "--ink-spacing-100", "px": 8 },
+        { "from": "Heading", "to": "Metadata", "token": "--ink-spacing-100", "px": 8 },
+        { "from": "Metadata", "to": "Actions", "token": "--ink-spacing-200", "px": 16 },
+        { "from": "Actions", "to": "Content", "token": "--ink-spacing-300", "px": 24 }
+      ],
+      "rules": [
+        "NO LocalNav sidebar — detail pages use full-width layout.",
+        "Status badge goes ABOVE the title (Badge then Heading in a Stack).",
+        "Use Tabs for multi-section content (Details, History, Comments).",
+        "Action buttons (Edit, Send, Delete) go in an Inline row below the title."
+      ],
+      "codeSketch": "<DocuSignShell globalNav={globalNavConfig}>\n  <Stack gap=\"var(--ink-spacing-200)\">\n    <Badge variant=\"info\">In Progress</Badge>\n    <Heading level={1}>Agreement Name</Heading>\n    <Text variant=\"secondary\">Created Jan 15, 2025 · 3 recipients</Text>\n    <Inline gap=\"var(--ink-spacing-100)\">\n      <Button>Edit</Button>\n      <Button variant=\"secondary\">Send</Button>\n    </Inline>\n    <Tabs>\n      <Tabs.Panel label=\"Details\">\n        <Card><Card.Body>...</Card.Body></Card>\n      </Tabs.Panel>\n      <Tabs.Panel label=\"History\">...</Tabs.Panel>\n    </Tabs>\n  </Stack>\n</DocuSignShell>",
+      "showcaseConfig": {
+        "globalNav": "const globalNavItems = [\n  { id: 'home', label: 'Home' },\n  { id: 'agreements', label: 'Agreements', active: true },\n  { id: 'templates', label: 'Templates' },\n  { id: 'reports', label: 'Reports' },\n  { id: 'admin', label: 'Admin' },\n];"
+      }
+    },
+    {
+      "id": "settings-page",
+      "title": "Settings Page (Form-Heavy with Sidebar)",
+      "keywords": ["settings", "admin", "preferences", "configuration", "account", "profile", "options", "form"],
+      "componentTree": "DocuSignShell\n├── GlobalNav (globalNav slot prop)\n├── LocalNav (settings sections as nav)\n└── Stack (main content)\n    ├── Heading level={1} (page title)\n    ├── Card (form section 1)\n    │   ├── Card.Header (section title)\n    │   └── Card.Body > Stack > form fields\n    └── Card (form section 2)\n        ├── Card.Header\n        └── Card.Body > Stack > form fields",
+      "components": ["DocuSignShell", "GlobalNav", "LocalNav", "Card", "Stack", "Heading", "Text", "Input", "Select", "Toggle", "Button", "Inline"],
+      "spacingStack": [
+        { "from": "GlobalNav", "to": "Content", "token": "--ink-spacing-400", "px": 32 },
+        { "from": "PageTitle", "to": "FirstCard", "token": "--ink-spacing-300", "px": 24 },
+        { "from": "Card", "to": "Card", "token": "--ink-spacing-300", "px": 24 },
+        { "from": "FormField", "to": "FormField", "token": "--ink-spacing-200", "px": 16 }
+      ],
+      "rules": [
+        "Use LocalNav sidebar with settings sections (General, Notifications, Security, etc.).",
+        "Each form section is a Card with Card.Header (section title) and Card.Body (fields).",
+        "Form fields stack vertically with --ink-spacing-200 gap.",
+        "Section headers use Heading level={2} (24px, weight 700).",
+        "Save/Cancel buttons go in an Inline at the bottom of each Card."
+      ],
+      "codeSketch": "<DocuSignShell\n  globalNav={globalNavConfig}\n  localNav={localNavConfig}\n>\n  <Stack gap=\"var(--ink-spacing-300)\">\n    <Heading level={1}>Settings</Heading>\n    <Card>\n      <Card.Header>\n        <Heading level={2}>General</Heading>\n      </Card.Header>\n      <Card.Body>\n        <Stack gap=\"var(--ink-spacing-200)\">\n          <Input label=\"Display Name\" />\n          <Input label=\"Email\" type=\"email\" />\n          <Select label=\"Language\" options={[...]} />\n          <Inline gap=\"var(--ink-spacing-100)\">\n            <Button>Save</Button>\n            <Button variant=\"secondary\">Cancel</Button>\n          </Inline>\n        </Stack>\n      </Card.Body>\n    </Card>\n  </Stack>\n</DocuSignShell>",
+      "showcaseConfig": {
+        "globalNav": "const globalNavItems = [\n  { id: 'home', label: 'Home' },\n  { id: 'agreements', label: 'Agreements' },\n  { id: 'templates', label: 'Templates' },\n  { id: 'reports', label: 'Reports' },\n  { id: 'admin', label: 'Admin', active: true },\n];",
+        "localNav": "const localNavSections = [\n  {\n    id: 'settings',\n    items: [\n      { id: 'general', label: 'General', active: true },\n      { id: 'notifications', label: 'Notifications' },\n      { id: 'security', label: 'Security' },\n      { id: 'integrations', label: 'Integrations' },\n      { id: 'billing', label: 'Billing' },\n    ],\n  },\n];"
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "templates": [
+    {
+      "id": "list-page",
+      "title": "List Page",
+      "description": "Navigator-style page with sidebar, page header, filters, and data table.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├──────────┬──────────────────────────────────────┤\n│          │ PageHeader          [+ New] [Actions] │\n│ LocalNav │──────────────────────────────────────│\n│          │ FilterBar  [Search] [Filters] [View]  │\n│  Inbox   │──────────────────────────────────────│\n│  Sent    │ DataTable                             │\n│  Drafts  │ ┌────┬──────────┬────────┬─────────┐ │\n│  Done    │ │ □  │ Name     │ Status │ Actions │ │\n│  Trash   │ ├────┼──────────┼────────┼─────────┤ │\n│          │ │ □  │ Row 1    │ Badge  │ ···     │ │\n│          │ │ □  │ Row 2    │ Badge  │ ···     │ │\n│          │ └────┴──────────┴────────┴─────────┘ │\n│          │ Pagination                            │\n└──────────┴──────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + LocalNav + AgreementTableView(PageHeader + FilterBar + DataTable)",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "pageHeaderToFilter": "16px (--ink-spacing-200)",
+        "filterToTable": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard",
+      "description": "Full-width dashboard with stat cards and data visualizations. No sidebar.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├─────────────────────────────────────────────────┤\n│ PageHeader: Dashboard                           │\n│─────────────────────────────────────────────────│\n│ ┌──────────────────┐  ┌──────────────────┐      │\n│ │ Card: Stat 1     │  │ Card: Stat 2     │      │\n│ │ Total Agreements │  │ Pending Review   │      │\n│ │ 1,234            │  │ 56               │      │\n│ └──────────────────┘  └──────────────────┘      │\n│ ┌──────────────────┐  ┌──────────────────┐      │\n│ │ Card: Stat 3     │  │ Card: Stat 4     │      │\n│ │ Completed Today  │  │ Expiring Soon    │      │\n│ │ 89               │  │ 12               │      │\n│ └──────────────────┘  └──────────────────┘      │\n│─────────────────────────────────────────────────│\n│ Card: Recent Activity (full-width)              │\n│ ┌───────────────────────────────────────────┐   │\n│ │ DataTable or Chart                        │   │\n│ └───────────────────────────────────────────┘   │\n└─────────────────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + Stack(PageHeader + Grid(Cards) + Card)",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "headerToCards": "24px (--ink-spacing-300)",
+        "cardToCard": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "detail-page",
+      "title": "Detail Page",
+      "description": "Single entity view with status, metadata, actions, and tabbed content.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├─────────────────────────────────────────────────┤\n│ Badge: In Progress                              │\n│ Heading: Agreement Name                         │\n│ Text: Created Jan 15 · 3 recipients             │\n│ [Edit] [Send] [Delete]                          │\n│─────────────────────────────────────────────────│\n│ Tabs: [Details] [History] [Comments]            │\n│─────────────────────────────────────────────────│\n│ ┌───────────────────────────────────────────┐   │\n│ │ Card: Details Content                     │   │\n│ │ Field: Value                              │   │\n│ │ Field: Value                              │   │\n│ └───────────────────────────────────────────┘   │\n└─────────────────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + Stack(Badge + Heading + Text + Inline(Buttons) + Tabs(Cards))",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "badgeToHeading": "8px (--ink-spacing-100)",
+        "actionsToTabs": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "templates-page",
+      "title": "Templates Page",
+      "description": "Card grid view for browsing reusable templates or documents.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├──────────┬──────────────────────────────────────┤\n│          │ PageHeader: Templates    [+ Create]   │\n│ LocalNav │──────────────────────────────────────│\n│          │ FilterBar [Search] [Category ▼]       │\n│ All      │──────────────────────────────────────│\n│ My       │ Grid (3 columns)                      │\n│ Shared   │ ┌──────┐ ┌──────┐ ┌──────┐          │\n│ Archived │ │Card 1│ │Card 2│ │Card 3│          │\n│          │ │ img  │ │ img  │ │ img  │          │\n│          │ │ name │ │ name │ │ name │          │\n│          │ └──────┘ └──────┘ └──────┘          │\n│          │ ┌──────┐ ┌──────┐ ┌──────┐          │\n│          │ │Card 4│ │Card 5│ │Card 6│          │\n│          │ └──────┘ └──────┘ └──────┘          │\n└──────────┴──────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + LocalNav + Stack(PageHeader + FilterBar + Grid(Cards))",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "filterToGrid": "24px (--ink-spacing-300)",
+        "cardToCard": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "reports-page",
+      "title": "Reports Page",
+      "description": "Analytics view with date range picker, charts, and summary tables.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├─────────────────────────────────────────────────┤\n│ PageHeader: Reports          [Date Range ▼]     │\n│─────────────────────────────────────────────────│\n│ ┌──────────────────────────────────────────┐    │\n│ │ Card: Chart (full-width)                 │    │\n│ │ ┌──────────────────────────────────────┐ │    │\n│ │ │ [Chart/Visualization Area]           │ │    │\n│ │ └──────────────────────────────────────┘ │    │\n│ └──────────────────────────────────────────┘    │\n│ ┌───────────────┐  ┌───────────────┐            │\n│ │ Card: Summary │  │ Card: Summary │            │\n│ │ Metric: Value │  │ Metric: Value │            │\n│ └───────────────┘  └───────────────┘            │\n│ DataTable: Detailed breakdown                   │\n└─────────────────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + Stack(PageHeader + Card(Chart) + Grid(Cards) + DataTable)",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "chartToSummary": "24px (--ink-spacing-300)",
+        "summaryToTable": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "settings-page",
+      "title": "Settings Page",
+      "description": "Form-heavy page with sidebar navigation between settings sections.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├──────────┬──────────────────────────────────────┤\n│          │ Heading: Settings                     │\n│ LocalNav │──────────────────────────────────────│\n│          │ Card: General Settings                │\n│ General  │ ┌────────────────────────────────┐   │\n│ Notif.   │ │ Input: Display Name            │   │\n│ Security │ │ Input: Email                   │   │\n│ Integr.  │ │ Select: Language               │   │\n│ Billing  │ │ [Save] [Cancel]                │   │\n│          │ └────────────────────────────────┘   │\n│          │──────────────────────────────────────│\n│          │ Card: Notification Preferences        │\n│          │ ┌────────────────────────────────┐   │\n│          │ │ Toggle: Email notifications    │   │\n│          │ │ Toggle: Push notifications     │   │\n│          │ │ [Save] [Cancel]                │   │\n│          │ └────────────────────────────────┘   │\n└──────────┴──────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + LocalNav + Stack(Heading + Cards(form fields))",
+      "spacing": {
+        "globalNavToContent": "32px (--ink-spacing-400)",
+        "titleToFirstCard": "24px (--ink-spacing-300)",
+        "cardToCard": "24px (--ink-spacing-300)",
+        "fieldToField": "16px (--ink-spacing-200)"
+      }
+    },
+    {
+      "id": "error-page",
+      "title": "Error Page",
+      "description": "Error state with message, description, and recovery action.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├─────────────────────────────────────────────────┤\n│                                                 │\n│                                                 │\n│              ┌─────────────────┐                │\n│              │   Icon (large)  │                │\n│              │                 │                │\n│              │  404 Not Found  │                │\n│              │                 │                │\n│              │ The page you're │                │\n│              │ looking for     │                │\n│              │ doesn't exist.  │                │\n│              │                 │                │\n│              │  [Go to Home]   │                │\n│              └─────────────────┘                │\n│                                                 │\n└─────────────────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + Center(Stack(Icon + Heading + Text + Button))",
+      "spacing": {
+        "iconToHeading": "16px (--ink-spacing-200)",
+        "headingToText": "8px (--ink-spacing-100)",
+        "textToButton": "24px (--ink-spacing-300)"
+      }
+    },
+    {
+      "id": "feature-intro",
+      "title": "Feature Introduction",
+      "description": "Onboarding or feature introduction page with hero section and feature cards.",
+      "diagram": "┌─────────────────────────────────────────────────┐\n│ GlobalNav                                       │\n├─────────────────────────────────────────────────┤\n│                                                 │\n│          Heading: Welcome to Feature            │\n│          Text: Description of what              │\n│          this feature does.                     │\n│          [Get Started]  [Learn More]            │\n│                                                 │\n│─────────────────────────────────────────────────│\n│ Grid (3 columns)                                │\n│ ┌──────────┐ ┌──────────┐ ┌──────────┐         │\n│ │ Card 1   │ │ Card 2   │ │ Card 3   │         │\n│ │ Icon     │ │ Icon     │ │ Icon     │         │\n│ │ Title    │ │ Title    │ │ Title    │         │\n│ │ Desc     │ │ Desc     │ │ Desc     │         │\n│ └──────────┘ └──────────┘ └──────────┘         │\n└─────────────────────────────────────────────────┘",
+      "layout": "DocuSignShell > GlobalNav + Stack(Center(Heading + Text + Inline(Buttons)) + Grid(Cards))",
+      "spacing": {
+        "globalNavToHero": "64px (--ink-spacing-700)",
+        "heroToCards": "48px (--ink-spacing-600)",
+        "cardToCard": "24px (--ink-spacing-300)"
+      }
+    }
+  ]
+}

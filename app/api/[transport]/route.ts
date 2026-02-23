@@ -1,6 +1,8 @@
 import { createMcpHandler } from 'mcp-handler';
 
 import bundleData from '@/data/bundle.json';
+import gotchasData from '@/data/gotchas.json';
+import pageTemplatesData from '@/data/page-templates.json';
 
 import { Registry } from '@/src/data/registry';
 import { SourceReader } from '@/src/data/source-reader';
@@ -22,7 +24,11 @@ import { registerFigmaToCodePrompt } from '@/src/prompts/figma-to-code';
 import { registerFindComponentPrompt } from '@/src/prompts/find-component';
 
 // Initialize data layer from bundle (module-level, shared across requests)
-const registry = new Registry(bundleData.registry, (bundleData as Record<string, unknown>).propDetails as Record<string, import('@/src/data/registry').ComponentPropDetails> | undefined);
+const registry = new Registry(
+  bundleData.registry,
+  (bundleData as Record<string, unknown>).propDetails as Record<string, import('@/src/data/registry').ComponentPropDetails> | undefined,
+  gotchasData as Record<string, string[]>,
+);
 const sourceReader = new SourceReader({
   sources: bundleData.sources,
   tokens: bundleData.tokens,
@@ -51,7 +57,7 @@ const handler = createMcpHandler(
     registerFigmaToCodePrompt(server, registry);
     registerFindComponentPrompt(server, registry);
 
-    // Register resources (2 total)
+    // Register resources (3 total)
     server.resource('component-catalog', 'ink://catalog', async (uri) => {
       const components = registry.listComponents();
       const catalog = {
@@ -87,6 +93,16 @@ const handler = createMcpHandler(
         ],
       };
     });
+
+    server.resource('page-templates', 'ink://page-templates', async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify(pageTemplatesData),
+        },
+      ],
+    }));
   },
   {
     serverInfo: {

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Registry } from '../data/registry';
-import { apiCard, componentIndex, tokenQuickRef } from './format';
+import { apiCard, componentIndex, tokenQuickRef, spacingCheatSheet, visualHierarchyRules, layoutPresetSection, type LayoutPreset } from './format';
 import examples from '@/data/examples.json';
+import layoutPresetsData from '@/data/layout-presets.json';
+import compositionRecipesData from '@/data/composition-recipes.json';
 
 interface Example {
   id: string;
@@ -11,6 +13,12 @@ interface Example {
   complexity: string;
   componentsUsed: string[];
   code: string;
+}
+
+interface CompositionRecipe {
+  name: string;
+  keywords: string[];
+  composition: string;
 }
 
 function findBestExample(description: string): Example | null {
@@ -35,6 +43,31 @@ function findBestExample(description: string): Example | null {
   return best && best.score > 0 ? best.ex : exs[0]; // fallback to first example
 }
 
+/**
+ * Match a description to a layout preset using keyword scoring.
+ */
+function findMatchingPreset(description: string): LayoutPreset | null {
+  const q = description.toLowerCase();
+  let best: { preset: LayoutPreset; score: number } | null = null;
+  for (const preset of layoutPresetsData.presets as LayoutPreset[]) {
+    const score = preset.keywords.reduce((s, kw) => s + (q.includes(kw) ? 1 : 0), 0);
+    if (score > 0 && (!best || score > best.score)) {
+      best = { preset, score };
+    }
+  }
+  return best?.preset ?? null;
+}
+
+/**
+ * Match a description to composition recipes using keyword matching.
+ */
+function findMatchingRecipes(description: string): CompositionRecipe[] {
+  const q = description.toLowerCase();
+  return (compositionRecipesData.recipes as CompositionRecipe[]).filter(recipe =>
+    recipe.keywords.some(kw => q.includes(kw))
+  );
+}
+
 // Essential layout components that should always be included if not already matched
 const ESSENTIAL_COMPONENTS = ['Stack', 'Inline', 'Grid'];
 
@@ -47,6 +80,16 @@ export function registerBuildPrototypePrompt(server: McpServer, registry: Regist
       // Find relevant components via search
       const searchResults = registry.searchComponents(description);
       const matchedNames = new Set(searchResults.slice(0, 15).map(c => c.name));
+
+      // Match layout preset
+      const preset = findMatchingPreset(description);
+
+      // If a preset matched, ensure its components are included in API cards
+      if (preset) {
+        for (const name of preset.components) {
+          matchedNames.add(name);
+        }
+      }
 
       // Ensure essential layout utilities are always included
       for (const name of ESSENTIAL_COMPONENTS) {
@@ -61,6 +104,15 @@ export function registerBuildPrototypePrompt(server: McpServer, registry: Regist
 
       const apiCards = matched.map(m => apiCard(m)).join('\n\n');
       const componentNames = matched.map(m => m.name);
+
+      // Match composition recipes
+      const recipes = findMatchingRecipes(description);
+      const recipesSection = recipes.length > 0
+        ? `## Composition Recipes\n\n${recipes.map(r => `**${r.name}:** ${r.composition}`).join('\n\n')}`
+        : '';
+
+      // Layout preset section
+      const presetSection = preset ? layoutPresetSection(preset) : '';
 
       // Reference example
       const example = findBestExample(description);
@@ -97,6 +149,14 @@ For any component not in the API reference above, call \`get_component("Name")\`
 
 ${tokenQuickRef()}
 
+${spacingCheatSheet()}
+
+${visualHierarchyRules()}
+
+${presetSection}
+
+${recipesSection}
+
 ## Code Template
 
 Write your prototype in \`src/App.tsx\`:
@@ -128,6 +188,8 @@ export default function App() {
 4. **Imports**: Use \`'@/design-system'\` or specific layer paths like \`'@/design-system/3-primitives'\`
 
 ${exampleSection}
+
+For detailed page template diagrams with measurements, read the \`ink://page-templates\` resource.
 
 ## Workflow
 
