@@ -82,6 +82,7 @@ function buildBundleFromSource(): BundleData {
     /\.test\./,
     /\.spec\./,
     /\.stories\./,
+    /Demo\./,
     /README\.md/,
     /\.d\.ts$/,
   ];
