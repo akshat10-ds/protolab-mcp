@@ -8,6 +8,7 @@ import { Registry } from '@/src/data/registry';
 import { SourceReader } from '@/src/data/source-reader';
 import { DependencyResolver } from '@/src/data/dependency-resolver';
 import { Tracker } from '@/src/analytics/tracker';
+import { trackHttpRequest } from '@/src/analytics/http-tracking';
 
 import { registerListComponents } from '@/src/tools/list-components';
 import { registerGetComponent } from '@/src/tools/get-component';
@@ -144,4 +145,5 @@ const handler = createMcpHandler(
   }
 );
 
-export { handler as GET, handler as POST };
+export const GET = trackHttpRequest(handler);
+export const POST = trackHttpRequest(handler);

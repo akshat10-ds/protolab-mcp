@@ -78,6 +78,16 @@ export interface ValidationEvent extends EventBase {
   errorCount: number;
 }
 
+export interface HttpRequestEvent extends EventBase {
+  event: 'http_request';
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  userAgent: string;
+  transport: 'sse' | 'jsonrpc' | 'page';
+}
+
 // ── Union type ──────────────────────────────────────────────────────
 
 export type AnalyticsEvent =
@@ -89,4 +99,5 @@ export type AnalyticsEvent =
   | ComponentListEvent
   | SessionStartEvent
   | ErrorEvent
-  | ValidationEvent;
+  | ValidationEvent
+  | HttpRequestEvent;
