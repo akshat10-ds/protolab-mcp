@@ -47,6 +47,8 @@ export function scanUsedIcons(sourceContents: string[]): Set<string> {
   const patterns = [
     /\bname=["']([a-z][a-z0-9-]*)["']/g,
     /\bname=\{["']([a-z][a-z0-9-]*)["']\}/g,
+    /\bicon=["']([a-z][a-z0-9-]*)["']/g,
+    /\bicon=\{["']([a-z][a-z0-9-]*)["']\}/g,
   ];
 
   for (const content of sourceContents) {
@@ -68,6 +70,11 @@ export const COMMON_ICONS = new Set([
   'chevron-down', 'chevron-up', 'chevron-left', 'chevron-right',
   'search', 'menu', 'more-horizontal', 'add', 'edit', 'delete',
   'arrow-left', 'arrow-right', 'arrow-down', 'arrow-up',
+  // Icons commonly passed as dynamic prop values (not detectable by static regex)
+  'star', 'lock', 'unlock', 'people', 'envelope', 'bolt',
+  'more-vertical', 'settings', 'help', 'overflow-horizontal',
+  'boolean', 'sort', 'gripper-bar', 'plus', 'minus', 'bell',
+  'external-link', 'filter',
 ]);
 
 /**

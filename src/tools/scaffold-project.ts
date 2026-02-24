@@ -147,6 +147,12 @@ function generateAppTsx(componentNames: Set<string>, requestedComponents?: Set<s
   const hasModal = has('Modal');
   const hasPageHeader = has('PageHeader');
   const hasTabs = has('Tabs');
+  const hasAgreementView = has('AgreementTableView');
+  const hasFilterBar = has('FilterBar');
+  const hasBreadcrumb = has('Breadcrumb');
+  const hasBanner = has('Banner');
+  const hasIconButton = has('IconButton');
+  const hasSearchInput = has('SearchInput');
 
   // Build import list based on what's used in the template
   const imports = new Set<string>();
@@ -166,7 +172,7 @@ function generateAppTsx(componentNames: Set<string>, requestedComponents?: Set<s
     else if (hasDashboard) activeNavItem = 'home';
 
     const globalNavLines = `const globalNavConfig = {
-  logo: <span style={{ fontWeight: 700, fontSize: 18 }}>MyApp</span>,
+  logo: <img src="/docusign-logo.svg" alt="DocuSign" />,
   navItems: [
     { id: 'home', label: 'Home', href: '#'${activeNavItem === 'home' ? ', active: true' : ''} },
     { id: 'agreements', label: 'Agreements', href: '#'${activeNavItem === 'agreements' ? ', active: true' : ''} },
@@ -181,10 +187,37 @@ function generateAppTsx(componentNames: Set<string>, requestedComponents?: Set<s
   user: { name: 'Jane Smith', email: 'jane@example.com' },
 };`;
 
-    // Add LocalNav for shell + form patterns (settings/admin pages)
-    const includeLocalNav = hasForm;
+    // Add LocalNav for shell patterns that have sidebar navigation
+    const includeLocalNav = hasForm || hasTable;
     let localNavLines = '';
-    if (includeLocalNav) {
+    if (includeLocalNav && hasTable) {
+      localNavLines = `
+
+const localNavConfig = {
+  headerLabel: 'New',
+  sections: [
+    {
+      id: 'main',
+      items: [
+        { id: 'inbox', label: 'Inbox', icon: 'envelope' },
+        { id: 'agreements', label: 'Agreements', icon: 'edit', active: true },
+        { id: 'templates', label: 'Templates', icon: 'star' },
+      ],
+    },
+    {
+      id: 'folders',
+      title: 'Folders',
+      headerLabel: true,
+      items: [
+        { id: 'all', label: 'All' },
+        { id: 'sent', label: 'Sent' },
+        { id: 'drafts', label: 'Drafts' },
+        { id: 'archived', label: 'Archived' },
+      ],
+    },
+  ],
+};`;
+    } else if (includeLocalNav) {
       localNavLines = `
 
 const localNavConfig = {
@@ -226,8 +259,157 @@ const localNavConfig = {
   let contentBlock = '';
   let stateBlock = '';
 
-  if (hasTable) {
-    // DataTable template with sample data
+  if (hasTable && hasAgreementView) {
+    // Rich AgreementTableView + DataTable pattern — full agreement management page
+    imports.add('DataTable');
+    imports.add('AgreementTableView');
+    if (has('Badge')) imports.add('Badge');
+    if (hasBreadcrumb) imports.add('Breadcrumb');
+    if (hasBanner) imports.add('Banner');
+    if (hasFilterBar) imports.add('FilterBar');
+    if (hasSearchInput) imports.add('SearchInput');
+    if (hasIconButton) imports.add('IconButton');
+    if (hasPageHeader) imports.add('PageHeader');
+    if (has('Button')) imports.add('Button');
+
+    topLevelCode += `
+// Sample agreement data — replace with your own
+interface Agreement {
+  id: string;
+  name: string;
+  status: 'Completed' | 'Action Required' | 'Waiting for Others' | 'Expiring Soon' | 'Voided';
+  sender: string;
+  recipient: string;
+  type: string;
+  lastUpdated: string;
+  expires: string;
+}
+
+const agreements: Agreement[] = [
+  { id: '1', name: 'NDA - Acme Corp', status: 'Completed', sender: 'Jane Smith', recipient: 'John Davis', type: 'NDA', lastUpdated: '2024-12-15', expires: '2025-12-15' },
+  { id: '2', name: 'MSA - Globex Inc', status: 'Action Required', sender: 'Jane Smith', recipient: 'Sarah Chen', type: 'MSA', lastUpdated: '2025-01-08', expires: '2026-01-08' },
+  { id: '3', name: 'SOW - Initech', status: 'Waiting for Others', sender: 'Mike Johnson', recipient: 'Jane Smith', type: 'SOW', lastUpdated: '2025-01-20', expires: '2025-07-20' },
+  { id: '4', name: 'Lease Agreement - 123 Main St', status: 'Completed', sender: 'Jane Smith', recipient: 'Tom Wilson', type: 'Lease', lastUpdated: '2024-11-01', expires: '2025-11-01' },
+  { id: '5', name: 'Vendor Agreement - CloudCo', status: 'Expiring Soon', sender: 'Jane Smith', recipient: 'Lisa Park', type: 'Vendor', lastUpdated: '2024-06-15', expires: '2025-02-28' },
+  { id: '6', name: 'Employment Offer - R. Patel', status: 'Voided', sender: 'HR Team', recipient: 'Raj Patel', type: 'Offer Letter', lastUpdated: '2025-01-25', expires: '-' },
+];
+
+const statusKind: Record<string, 'success' | 'warning' | 'error' | 'info' | 'subtle'> = {
+  'Completed': 'success',
+  'Action Required': 'warning',
+  'Waiting for Others': 'info',
+  'Expiring Soon': 'error',
+  'Voided': 'subtle',
+};
+
+const columns = [
+  { key: 'name' as const, header: 'Name', sortable: true },${has('Badge') ? `
+  {
+    key: 'status' as const,
+    header: 'Status',
+    cell: (row: Agreement) => <Badge kind={statusKind[row.status] ?? 'subtle'}>{row.status}</Badge>,
+  },` : `
+  { key: 'status' as const, header: 'Status', sortable: true },`}
+  { key: 'sender' as const, header: 'Sender', sortable: true },
+  { key: 'recipient' as const, header: 'Recipient', sortable: true },
+  { key: 'type' as const, header: 'Type', sortable: true },
+  { key: 'lastUpdated' as const, header: 'Last Updated', sortable: true },
+  { key: 'expires' as const, header: 'Expires', sortable: true },
+];
+`;
+
+    // AgreementTableView uses props: pageHeader, banner, filterBar, children
+    // Breadcrumb goes above AgreementTableView, Tabs go into filterBar area
+
+    // pageHeader prop
+    let pageHeaderProp = '';
+    if (hasPageHeader) {
+      const headerActions = has('Button') ? ` actions={<Button kind="brand">Start</Button>}` : '';
+      pageHeaderProp = `<PageHeader title="Agreements"${headerActions} />`;
+    }
+
+    // banner prop — Banner uses children for content, closable for dismiss
+    let bannerProp = '';
+    if (hasBanner) {
+      bannerProp = `<Banner kind="information" closable>Try Docusign AI — automate agreement workflows with AI-powered insights.</Banner>`;
+    }
+
+    // filterBar prop — FilterBar uses search/filters/quickActions props (not children)
+    let filterBarProp = '';
+    if (hasFilterBar) {
+      const filterBarProps: string[] = [];
+      if (hasSearchInput) {
+        filterBarProps.push(`search={{ placeholder: 'Search agreements...' }}`);
+      }
+      if (hasIconButton) {
+        filterBarProps.push(`filters={<IconButton icon="filter" label="Filter" />}`);
+      }
+      filterBarProp = `<FilterBar ${filterBarProps.join(' ')} />`;
+    }
+
+    // Tabs — uses activeTab/onChange props
+    if (hasTabs) {
+      imports.add('Tabs');
+      stateBlock += "  const [activeTab, setActiveTab] = useState('all');\n";
+    }
+
+    // renderRowActions
+    const renderRowActions = hasIconButton
+      ? `\n            renderRowActions={() => <IconButton icon="more-horizontal" label="Actions" size="small" />}`
+      : '';
+
+    // Compose AgreementTableView with props
+    const viewProps: string[] = [];
+    if (pageHeaderProp) viewProps.push(`        pageHeader={${pageHeaderProp}}`);
+    if (bannerProp) viewProps.push(`        banner={${bannerProp}}`);
+    if (filterBarProp) viewProps.push(`        filterBar={${filterBarProp}}`);
+
+    const viewPropStr = viewProps.length > 0 ? `\n${viewProps.join('\n')}\n      ` : '';
+
+    const parts: string[] = [];
+
+    // Breadcrumb above AgreementTableView with matching padding
+    if (hasBreadcrumb) {
+      parts.push(`      <div style={{ padding: '12px 80px 0' }}>
+        <Breadcrumb items={[{ label: 'Home', href: '#' }, { label: 'Agreements' }]} />
+      </div>`);
+    }
+
+    // Tabs above AgreementTableView
+    if (hasTabs) {
+      parts.push(`      <div style={{ padding: '0 80px' }}>
+        <Tabs
+          items={[
+            { id: 'all', label: 'All' },
+            { id: 'action', label: 'Action Required' },
+            { id: 'waiting', label: 'Waiting for Others' },
+            { id: 'expiring', label: 'Expiring Soon' },
+            { id: 'completed', label: 'Completed' },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
+      </div>`);
+    }
+
+    parts.push(`      <AgreementTableView${viewPropStr}>
+          <DataTable
+            columns={columns}
+            data={agreements}
+            getRowKey={(row) => row.id}
+            selectable${renderRowActions}
+          />
+      </AgreementTableView>`);
+
+    contentBlock = parts.join('\n');
+
+    // Override headerBlock — PageHeader is inside AgreementTableView
+    headerBlock = '';
+
+    // Override tabs — already handled above
+    // We skip the generic tabs wrapper below by not setting hasTabs path
+  } else if (hasTable) {
+    // DataTable template with sample data (no AgreementTableView)
     imports.add('DataTable');
     if (has('Badge')) imports.add('Badge');
 
@@ -335,7 +517,7 @@ ${fields.join('\n')}
   if (hasModal) {
     imports.add('Modal');
     if (has('Button')) imports.add('Button');
-    stateBlock = "  const [modalOpen, setModalOpen] = useState(false);\n";
+    stateBlock += "  const [modalOpen, setModalOpen] = useState(false);\n";
 
     modalBlock = `
       <Modal
@@ -347,8 +529,8 @@ ${fields.join('\n')}
       </Modal>`;
   }
 
-  // ── Tabs wrapper (if present, wrap content) ──────────────────────
-  if (hasTabs) {
+  // ── Tabs wrapper (if present and not already handled by AgreementTableView) ──
+  if (hasTabs && !hasAgreementView) {
     imports.add('Tabs');
     stateBlock += "  const [activeTab, setActiveTab] = useState('tab1');\n";
 
@@ -358,8 +540,8 @@ ${fields.join('\n')}
           { id: 'tab2', label: 'Details' },
           { id: 'tab3', label: 'History' },
         ]}
-        activeId={activeTab}
-        onActivate={setActiveTab}
+        activeTab={activeTab}
+        onChange={setActiveTab}
       />
 ${contentBlock}`;
   }
@@ -395,6 +577,7 @@ const INDEX_CSS_WITH_FONTS = `@import './design-system/1-tokens/tokens.css';
 @import './styles/fonts.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -415,6 +598,7 @@ img, svg { display: block; max-width: 100%; }
 const INDEX_CSS_NO_FONTS = `@import './design-system/1-tokens/tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -440,8 +624,11 @@ img, svg { display: block; max-width: 100%; }
  * export both the host and virtual names from the same directory.
  */
 function componentBarrel(componentName: string, virtualExports?: string[]): string {
-  const names = [componentName, ...(virtualExports ?? [])];
-  return `export { ${names.join(', ')} } from './${componentName}';\n`;
+  if (virtualExports && virtualExports.length > 0) {
+    // Virtual children are the actual exports — the host (e.g. Typography) isn't exported directly
+    return `export { ${virtualExports.sort().join(', ')} } from './${componentName}';\n`;
+  }
+  return `export { ${componentName} } from './${componentName}';\n`;
 }
 
 /**
@@ -477,6 +664,117 @@ function mainBarrel(layerComponents: Map<number, string[]>): string {
 /** Convert a bundle path like "design-system/2-utilities/Stack/Stack.tsx" to a static URL path */
 function toStaticPath(bundlePath: string): string {
   return bundlePath.replace(/^design-system\//, '');
+}
+
+/**
+ * Generate a self-contained shell script that sets up the project:
+ * creates directories, downloads all source files, infrastructure, fonts,
+ * writes boilerplate/barrels/generated files, and runs npm install.
+ */
+function generateSetupScript(
+  projectName: string,
+  boilerplate: Record<string, string>,
+  barrels: Record<string, string>,
+  generatedFiles: Record<string, string>,
+  sourceFiles: { destPath: string; url: string }[],
+  infrastructure: Record<string, { destPath: string; url: string }>,
+  fontFiles?: { destPath: string; url: string }[],
+): string {
+  const lines: string[] = [
+    '#!/bin/bash',
+    'set -e',
+    '',
+    `echo "Setting up ${projectName}..."`,
+    `mkdir -p "${projectName}"`,
+    `cd "${projectName}"`,
+    '',
+  ];
+
+  // Collect all directories needed
+  const allDirs = new Set<string>();
+  const addDir = (filePath: string) => {
+    const dir = filePath.split('/').slice(0, -1).join('/');
+    if (dir) allDirs.add(dir);
+  };
+
+  for (const path of Object.keys(boilerplate)) addDir(path);
+  for (const path of Object.keys(barrels)) addDir(path);
+  for (const path of Object.keys(generatedFiles)) addDir(path);
+  for (const { destPath } of sourceFiles) addDir(destPath);
+  for (const { destPath } of Object.values(infrastructure)) addDir(destPath);
+  if (fontFiles) for (const { destPath } of fontFiles) addDir(destPath);
+
+  // Create all directories
+  const sortedDirs = [...allDirs].sort();
+  lines.push('# Create directory structure');
+  lines.push(`mkdir -p ${sortedDirs.map(d => `"${d}"`).join(' \\\n  ')}`);
+  lines.push('');
+
+  // Write boilerplate files (inline via heredoc)
+  lines.push('# Write boilerplate files');
+  for (const [path, content] of Object.entries(boilerplate)) {
+    lines.push(`cat > "${path}" << 'PROTOLAB_EOF'`);
+    lines.push(content.trimEnd());
+    lines.push('PROTOLAB_EOF');
+    lines.push('');
+  }
+
+  // Write barrel files
+  lines.push('# Write barrel exports');
+  for (const [path, content] of Object.entries(barrels)) {
+    lines.push(`cat > "${path}" << 'PROTOLAB_EOF'`);
+    lines.push(content.trimEnd());
+    lines.push('PROTOLAB_EOF');
+    lines.push('');
+  }
+
+  // Write generated files (e.g. trimmed iconPaths)
+  if (Object.keys(generatedFiles).length > 0) {
+    lines.push('# Write generated files');
+    for (const [path, content] of Object.entries(generatedFiles)) {
+      lines.push(`cat > "${path}" << 'PROTOLAB_EOF'`);
+      lines.push(content.trimEnd());
+      lines.push('PROTOLAB_EOF');
+      lines.push('');
+    }
+  }
+
+  // Download source files in parallel
+  lines.push('# Download component source files');
+  lines.push('echo "Downloading component sources..."');
+
+  // Use curl with parallel flag — batch into groups of 50
+  const batchSize = 50;
+  for (let i = 0; i < sourceFiles.length; i += batchSize) {
+    const batch = sourceFiles.slice(i, i + batchSize);
+    const curlArgs = batch.map(f => `-o "${f.destPath}" "${f.url}"`).join(' \\\n  ');
+    lines.push(`curl -s --parallel --create-dirs \\\n  ${curlArgs}`);
+    lines.push('');
+  }
+
+  // Download infrastructure files
+  lines.push('# Download infrastructure (tokens, utils, fonts.css)');
+  const infraArgs = Object.values(infrastructure).map(f => `-o "${f.destPath}" "${f.url}"`).join(' \\\n  ');
+  lines.push(`curl -s --parallel --create-dirs \\\n  ${infraArgs}`);
+  lines.push('');
+
+  // Download font files
+  if (fontFiles && fontFiles.length > 0) {
+    lines.push('# Download font files');
+    lines.push('echo "Downloading fonts..."');
+    const fontArgs = fontFiles.map(f => `-o "${f.destPath}" "${f.url}"`).join(' \\\n  ');
+    lines.push(`curl -s --parallel --create-dirs \\\n  ${fontArgs}`);
+    lines.push('');
+  }
+
+  // Install and run
+  lines.push('# Install dependencies and start dev server');
+  lines.push('echo "Installing dependencies..."');
+  lines.push('npm install');
+  lines.push('echo ""');
+  lines.push(`echo "Done! Run: cd ${projectName} && npm run dev"`);
+
+  return lines.join('\n') + '\n';
 }
 
 // ── Tool registration ────────────────────────────────────────────────
@@ -573,12 +871,44 @@ export function registerScaffoldProject(
         }
       }
 
+      // Auto-resolve virtual children: scan the full registry for any component
+      // whose sourceComponent points to a resolved host (e.g. Typography hosts Heading+Text)
+      for (const comp of registry.listComponents()) {
+        if (comp.sourceComponent && allResolved.has(comp.sourceComponent) && !allResolved.has(comp.name)) {
+          allResolved.set(comp.name, { name: comp.name, layer: comp.layer });
+          const layerList = layerComponents.get(comp.layer) ?? [];
+          layerList.push(comp.name);
+          layerComponents.set(comp.layer, layerList);
+          virtualToHost.set(comp.name, comp.sourceComponent);
+        }
+      }
+
+      // Re-sort layer components after adding virtual children
+      for (const [layer, names] of layerComponents) {
+        layerComponents.set(layer, names.sort());
+      }
+
       // Group virtual components by their host for barrel generation
       const hostVirtuals = new Map<string, string[]>();
       for (const [virtual, host] of virtualToHost) {
         const list = hostVirtuals.get(host) ?? [];
         list.push(virtual);
         hostVirtuals.set(host, list);
+      }
+
+      // Remove host-only names from layerComponents — hosts that only exist as
+      // containers for virtual exports shouldn't appear in barrel exports themselves
+      for (const [host, virtuals] of hostVirtuals) {
+        if (virtuals.length > 0) {
+          const hostMeta = allResolved.get(host);
+          if (hostMeta) {
+            const layerList = layerComponents.get(hostMeta.layer);
+            if (layerList) {
+              const idx = layerList.indexOf(host);
+              if (idx !== -1) layerList.splice(idx, 1);
+            }
+          }
+        }
       }
 
       for (const { name, layer } of allResolved.values()) {
@@ -746,10 +1076,28 @@ export function registerScaffoldProject(
       const infrastructure: Record<string, { destPath: string; url: string }> = {
         tokens: { destPath: 'src/design-system/1-tokens/tokens.css', url: `${baseUrl}/tokens.css` },
         utility: { destPath: 'src/lib/utils.ts', url: `${baseUrl}/utils.ts` },
+        logo: { destPath: 'public/docusign-logo.svg', url: `${getSiteBaseUrl()}/docusign-logo.svg` },
       };
       if (includeFonts) {
         infrastructure.fonts = { destPath: 'src/styles/fonts.css', url: `${getSiteBaseUrl()}/fonts.css` };
       }
+
+      const fontFileEntries = includeFonts
+        ? FONT_FILES.map(f => ({
+            destPath: `public/${f}`,
+            url: `${getSiteBaseUrl()}/${f}`,
+          }))
+        : undefined;
+
+      const setupScript = generateSetupScript(
+        projectName,
+        boilerplateFiles,
+        barrelFiles,
+        generatedFiles,
+        sourceFiles,
+        infrastructure,
+        fontFileEntries,
+      );
 
       const result = {
         projectName,
@@ -760,18 +1108,14 @@ export function registerScaffoldProject(
         components: componentNames,
         ...(notFound.length > 0 && { notFound }),
         quickStart: `cd ${projectName} && npm install && npm run dev`,
-        instructions: `Write boilerplate/barrels/generatedFiles directly, fetch sourceFiles URLs to destPaths, fetch infrastructure URLs, ${includeFonts ? 'fetch fontFiles to public/fonts/, ' : ''}then run quickStart. Import from '@/design-system'.`,
+        instructions: `Option A (recommended): Save setupScript to setup.sh and run "bash setup.sh". Option B: Write boilerplate/barrels/generatedFiles directly, fetch sourceFiles URLs to destPaths, fetch infrastructure URLs, ${includeFonts ? 'fetch fontFiles to public/fonts/, ' : ''}then run quickStart. Import from '@/design-system'.`,
+        setupScript,
         boilerplate: boilerplateFiles,
         barrels: barrelFiles,
         ...(Object.keys(generatedFiles).length > 0 && { generatedFiles }),
         sourceFiles,
         infrastructure,
-        ...(includeFonts && {
-          fontFiles: FONT_FILES.map(f => ({
-            destPath: `public/${f}`,
-            url: `${getSiteBaseUrl()}/${f}`,
-          })),
-        }),
+        ...(fontFileEntries && { fontFiles: fontFileEntries }),
       };
 
       return {
