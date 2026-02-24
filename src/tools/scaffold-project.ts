@@ -133,12 +133,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
  * 6. Form (no shell)    → standalone form
  * 7. Fallback           → imports + placeholder
  */
-function generateAppTsx(componentNames: Set<string>): string {
+function generateAppTsx(componentNames: Set<string>, requestedComponents?: Set<string>): string {
   const has = (name: string) => componentNames.has(name);
+  // For pattern detection, only check explicitly-requested components (not transitive deps)
+  // This prevents e.g. SearchInput pulling in Input and triggering form pattern
+  const requested = requestedComponents ?? componentNames;
+  const wasRequested = (name: string) => requested.has(name);
 
   const hasShell = has('DocuSignShell');
   const hasTable = has('DataTable');
-  const hasForm = has('Input') || has('Select') || has('ComboBox') || has('TextArea');
+  const hasForm = wasRequested('Input') || wasRequested('Select') || wasRequested('ComboBox') || wasRequested('TextArea');
   const hasDashboard = has('Card') && (has('Grid') || has('Inline'));
   const hasModal = has('Modal');
   const hasPageHeader = has('PageHeader');
@@ -150,18 +154,59 @@ function generateAppTsx(componentNames: Set<string>): string {
   // ── Shell wrapper (open/close) ───────────────────────────────────
   let shellOpen = '';
   let shellClose = '';
+  let topLevelCode = '';
 
   if (hasShell) {
     imports.add('DocuSignShell');
-    shellOpen = `    <DocuSignShell
-      globalNav={{
-        appName: 'My App',
-        navItems: [
-          { id: 'home', label: 'Home', href: '/', active: true },
-          { id: 'settings', label: 'Settings', href: '/settings' },
-        ],
-      }}
-    >`;
+
+    // Determine which nav item should be active based on pattern
+    let activeNavItem = 'home';
+    if (hasTable) activeNavItem = 'agreements';
+    else if (hasForm) activeNavItem = 'admin';
+    else if (hasDashboard) activeNavItem = 'home';
+
+    const globalNavLines = `const globalNavConfig = {
+  logo: <span style={{ fontWeight: 700, fontSize: 18 }}>MyApp</span>,
+  navItems: [
+    { id: 'home', label: 'Home', href: '#'${activeNavItem === 'home' ? ', active: true' : ''} },
+    { id: 'agreements', label: 'Agreements', href: '#'${activeNavItem === 'agreements' ? ', active: true' : ''} },
+    { id: 'templates', label: 'Templates', href: '#' },
+    { id: 'reports', label: 'Reports', href: '#' },
+    { id: 'admin', label: 'Admin', href: '#'${activeNavItem === 'admin' ? ', active: true' : ''} },
+  ],
+  showSearch: true,
+  showNotifications: true,
+  notificationCount: 3,
+  showSettings: true,
+  user: { name: 'Jane Smith', email: 'jane@example.com' },
+};`;
+
+    // Add LocalNav for shell + form patterns (settings/admin pages)
+    const includeLocalNav = hasForm;
+    let localNavLines = '';
+    if (includeLocalNav) {
+      localNavLines = `
+
+const localNavConfig = {
+  sections: [{
+    id: 'settings',
+    items: [
+      { id: 'general', label: 'General', active: true },
+      { id: 'notifications', label: 'Notifications' },
+      { id: 'security', label: 'Security' },
+      { id: 'integrations', label: 'Integrations' },
+      { id: 'billing', label: 'Billing' },
+    ],
+  }],
+};`;
+    }
+
+    topLevelCode = globalNavLines + localNavLines + (topLevelCode ? '\n' + topLevelCode : '');
+
+    const navProps = includeLocalNav
+      ? 'globalNav={globalNavConfig} localNav={localNavConfig}'
+      : 'globalNav={globalNavConfig}';
+    shellOpen = `    <DocuSignShell ${navProps}>`;
     shellClose = '    </DocuSignShell>';
   }
 
@@ -180,14 +225,13 @@ function generateAppTsx(componentNames: Set<string>): string {
   // ── Content block (the main body) ────────────────────────────────
   let contentBlock = '';
   let stateBlock = '';
-  let topLevelCode = '';
 
   if (hasTable) {
     // DataTable template with sample data
     imports.add('DataTable');
     if (has('Badge')) imports.add('Badge');
 
-    topLevelCode = `
+    topLevelCode += `
 // Sample data — replace with your own
 interface Row {
   id: string;
@@ -593,7 +637,7 @@ export function registerScaffoldProject(
         'tsconfig.json': TSCONFIG,
         'index.html': indexHtml(projectName),
         'src/main.tsx': MAIN_TSX,
-        'src/App.tsx': generateAppTsx(new Set(componentNames)),
+        'src/App.tsx': generateAppTsx(new Set(componentNames), new Set(components)),
         'src/index.css': includeFonts ? INDEX_CSS_WITH_FONTS : INDEX_CSS_NO_FONTS,
       };
 

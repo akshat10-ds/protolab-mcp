@@ -155,8 +155,20 @@ describe('Journey 3: Scaffold and validate', () => {
     expect(appTsx).toContain('DocuSignShell');
     expect(appTsx).toContain('DataTable');
 
-    // Should use globalNav as config object (not JSX)
-    expect(appTsx).toContain('globalNav={{');
+    // Should use globalNavConfig as top-level const
+    expect(appTsx).toContain('globalNav={globalNavConfig}');
+    expect(appTsx).toContain('globalNavConfig');
+
+    // Rich nav: 5 nav items including Reports and Templates
+    expect(appTsx).toContain("label: 'Reports'");
+    expect(appTsx).toContain("label: 'Templates'");
+
+    // Rich nav: search, notifications, settings, logo, user
+    expect(appTsx).toContain('showSearch: true');
+    expect(appTsx).toContain('showNotifications: true');
+    expect(appTsx).toContain('showSettings: true');
+    expect(appTsx).toContain('logo:');
+    expect(appTsx).toContain("name: 'Jane Smith'");
 
     // Should have sample data and columns
     expect(appTsx).toContain('sampleData');
@@ -165,6 +177,27 @@ describe('Journey 3: Scaffold and validate', () => {
 
     // Should NOT be the empty placeholder
     expect(appTsx).not.toContain('{/* Your prototype here */}');
+  });
+
+  test('scaffold_project generates LocalNav for shell + form pattern', async () => {
+    const result = await callTool('scaffold_project', {
+      projectName: 'settings-test',
+      components: ['DocuSignShell', 'Input', 'Button'],
+      mode: 'inline',
+      includeFonts: false,
+    }) as { files: Record<string, string> };
+
+    const appTsx = result.files['src/App.tsx'];
+    expect(appTsx, 'App.tsx should exist').toBeDefined();
+
+    // Should have localNavConfig as top-level const
+    expect(appTsx).toContain('localNavConfig');
+    expect(appTsx).toContain('localNav={localNavConfig}');
+
+    // LocalNav should have realistic section items
+    expect(appTsx).toContain("label: 'General'");
+    expect(appTsx).toContain("label: 'Security'");
+    expect(appTsx).toContain("label: 'Billing'");
   });
 
   test('scaffold_project generates form App.tsx when Input is included', async () => {

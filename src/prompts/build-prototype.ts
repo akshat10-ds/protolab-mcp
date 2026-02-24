@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Registry } from '../data/registry';
-import { apiCard, componentIndex, tokenQuickRef, spacingCheatSheet, visualHierarchyRules, layoutPresetSection, type LayoutPreset } from './format';
+import { apiCard, componentIndex, tokenQuickRef, spacingCheatSheet, visualHierarchyRules, navigationDefaults, layoutPresetSection, type LayoutPreset } from './format';
 import examples from '@/data/examples.json';
 import layoutPresetsData from '@/data/layout-presets.json';
 import compositionRecipesData from '@/data/composition-recipes.json';
@@ -152,6 +152,8 @@ ${tokenQuickRef()}
 ${spacingCheatSheet()}
 
 ${visualHierarchyRules()}
+
+${navigationDefaults()}
 
 ${presetSection}
 

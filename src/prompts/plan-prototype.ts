@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Registry } from '../data/registry';
-import { componentIndex, tokenQuickRef, spacingCheatSheet } from './format';
+import { componentIndex, tokenQuickRef, spacingCheatSheet, navigationDefaults } from './format';
 
 export function registerPlanPrototypePrompt(server: McpServer, registry: Registry) {
   server.prompt(
@@ -128,6 +128,8 @@ Once the user approves (or adjusts) the plan:
 ${tokenQuickRef()}
 
 ${spacingCheatSheet()}
+
+${navigationDefaults()}
 
 ## Common Layout Patterns
 

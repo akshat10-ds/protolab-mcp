@@ -21,11 +21,14 @@
   ],
   "GlobalNav": [
     "Config-driven: pass as props object to DocuSignShell.globalNav slot, NOT as JSX children.",
-    "Standard items: Home, Agreements, Templates, Reports, Admin."
+    "Standard items: Home, Agreements, Templates, Reports, Admin. Do NOT reduce to fewer items.",
+    "ALWAYS include: logo, navItems (5 items), showSearch, showNotifications, showSettings, and user.",
+    "Set active: true on ONE nav item to indicate the current page."
   ],
   "LocalNav": [
     "Config-driven: pass as props object to DocuSignShell.localNav slot, NOT as JSX children.",
-    "Use headerLabel + headerMenuItems for the 'Start' button dropdown."
+    "Use headerLabel + headerMenuItems for the 'Start' button dropdown.",
+    "Include 4-5 realistic section items. Do NOT reduce to fewer than 3 items."
   ],
   "DocuSignShell": [
     "GlobalNav and LocalNav go in slot props: globalNav={{...}} localNav={{...}}.",

@@ -213,6 +213,57 @@ export function visualHierarchyRules(): string {
 }
 
 /**
+ * Navigation defaults — rich GlobalNav/LocalNav configs that LLMs should preserve.
+ * Prevents over-simplification of navigation in generated prototypes.
+ */
+export function navigationDefaults(): string {
+  return `## Navigation Defaults
+
+IMPORTANT: Do NOT simplify navigation. Always include the full config with logo, 5 nav items, search, notifications, settings, and user.
+
+**GlobalNav default config** (pass to DocuSignShell.globalNav):
+\`\`\`tsx
+const globalNavConfig = {
+  logo: <span style={{ fontWeight: 700, fontSize: 18 }}>MyApp</span>,
+  navItems: [
+    { id: 'home', label: 'Home', href: '#', active: true },
+    { id: 'agreements', label: 'Agreements', href: '#' },
+    { id: 'templates', label: 'Templates', href: '#' },
+    { id: 'reports', label: 'Reports', href: '#' },
+    { id: 'admin', label: 'Admin', href: '#' },
+  ],
+  showSearch: true,
+  showNotifications: true,
+  notificationCount: 3,
+  showSettings: true,
+  user: { name: 'Jane Smith', email: 'jane@example.com' },
+};
+\`\`\`
+
+**LocalNav default config** (pass to DocuSignShell.localNav for settings/admin pages):
+\`\`\`tsx
+const localNavConfig = {
+  sections: [{
+    id: 'settings',
+    items: [
+      { id: 'general', label: 'General', active: true },
+      { id: 'notifications', label: 'Notifications' },
+      { id: 'security', label: 'Security' },
+      { id: 'integrations', label: 'Integrations' },
+      { id: 'billing', label: 'Billing' },
+    ],
+  }],
+};
+\`\`\`
+
+Rules:
+- ALWAYS include \`logo\`, all 5 \`navItems\`, \`showSearch\`, \`showNotifications\`, \`showSettings\`, and \`user\`
+- Set \`active: true\` on ONE nav item matching the current page
+- For settings/admin pages, include LocalNav with 4-5 section items
+- Do NOT reduce nav items to fewer than 5. Do NOT omit search, notifications, or settings.`;
+}
+
+/**
  * Layout preset section — rendered when a preset matches the user's description.
  * Includes component tree, spacing, rules, code sketch, and optional showcase config.
  */

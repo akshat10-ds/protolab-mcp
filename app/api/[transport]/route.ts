@@ -137,6 +137,8 @@ const handler = createMcpHandler(
       '• get_design_tokens — CSS custom properties (spacing, colors, typography)',
       '• map_ui_elements — maps UI descriptions to Ink components',
       '• get_usage_stats — server analytics',
+      '',
+      'IMPORTANT: GlobalNav and LocalNav have rich default configs. Always use the full config with logo, 5 nav items, search, notifications, settings, and user. Never simplify navigation.',
     ].join('\n'),
     capabilities: {
       tools: {},
