@@ -166,21 +166,35 @@ export default function DashboardPage() {
   const [error, setError] = useState<ErrorData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/dashboard');
-      const json = await res.json();
-      if (res.ok) {
-        setData(json);
-        setError(null);
-      } else {
+  const fetchData = useCallback(async (retries = 2) => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch('/api/dashboard');
+        const json = await res.json();
+        if (res.ok) {
+          setData(json);
+          setError(null);
+          return;
+        }
+        // On 503 (Redis not configured), don't retry
+        if (res.status === 503) {
+          setError(json);
+          return;
+        }
+        // On 500, retry after brief delay
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        // Final attempt failed — show error but keep last-good data
         setError(json);
-        setData(null);
+      } catch {
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        setError({ error: 'Failed to connect to dashboard', setup: [] });
       }
-    } catch {
-      setError({ error: 'Failed to fetch dashboard data', setup: [] });
-    } finally {
-      setLoading(false);
     }
   }, []);
 

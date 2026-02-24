@@ -43,6 +43,19 @@ function sortedHash(hash: Record<string, string> | null, limit = 20): Array<{ ke
     .slice(0, limit);
 }
 
+/** Wrap a promise with a timeout */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 10;
+
 export async function GET() {
   const env = getRedisEnv();
   if (!env) {
@@ -100,7 +113,7 @@ export async function GET() {
   p1.get('mcp:http:status:404');                // 21
   p1.get('mcp:http:status:500');                // 22
 
-  const r1 = await p1.exec();
+  const r1 = await withTimeout(p1.exec(), 5000, 'Redis pipeline 1');
 
   // ── Pipeline 2: daily trends (14 days) + unique users ─────────
   const p2 = kv.pipeline();
@@ -128,7 +141,7 @@ export async function GET() {
   p2.pfcount(`mcp:sessions:weekly:${thisWeek}`);    // 50
   p2.pfcount(`mcp:sessions:monthly:${thisMonth}`);  // 51
 
-  const r2 = await p2.exec();
+  const r2 = await withTimeout(p2.exec(), 5000, 'Redis pipeline 2');
 
   // ── Assemble response ─────────────────────────────────────────
   const num = (v: unknown) => (typeof v === 'number' ? v : parseInt(String(v || '0'), 10)) || 0;
@@ -200,7 +213,7 @@ export async function GET() {
   const httpTotal = num(r1[0]);
   const errorsTotal = num(r1[15]);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     http: {
       total: httpTotal,
       methods: { GET: num(r1[1]), POST: num(r1[2]) },
@@ -245,6 +258,9 @@ export async function GET() {
     dailyTrend,
     generatedAt: now.toISOString(),
   });
+  // Cache for 15s on CDN, serve stale up to 60s while revalidating
+  response.headers.set('Cache-Control', 's-maxage=15, stale-while-revalidate=60');
+  return response;
   } catch (err) {
     console.error('[dashboard] Redis error:', err);
     return NextResponse.json(
