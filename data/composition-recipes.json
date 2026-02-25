@@ -24,6 +24,36 @@
       "name": "EmptyState",
       "keywords": ["empty state", "no data", "no results", "placeholder", "zero state"],
       "composition": "Stack(align=center, gap=200) > Icon (large, 48px), Heading level={3} (title), Text variant=\"secondary\" (description), Button (primary action)"
+    },
+    {
+      "name": "ModalDialogFooter",
+      "keywords": ["modal footer", "dialog actions", "confirm cancel", "modal buttons", "confirmation dialog"],
+      "composition": "Modal(open, onClose, title, footer={<Inline justify=\"flex-end\" gap=100> <Button kind=\"secondary\">Cancel</Button> <Button kind=\"brand\">Confirm</Button> </Inline>}) > content as children"
+    },
+    {
+      "name": "TabNavigation",
+      "keywords": ["tab navigation", "tabbed content", "tab panels", "content tabs", "section tabs"],
+      "composition": "Tabs(items=[{ id, label, content: <ReactNode> }]) — content is rendered inline. For controlled mode add activeTab + onChange."
+    },
+    {
+      "name": "DataTableWithActions",
+      "keywords": ["data table actions", "table with filters", "filterable table", "table toolbar", "row actions"],
+      "composition": "AgreementTableView > filterBar={<FilterBar search={...} />} + <DataTable columns={...} data={...} renderRowActions={(row) => <Inline>action Buttons</Inline>} />"
+    },
+    {
+      "name": "BreadcrumbPageTitle",
+      "keywords": ["breadcrumb header", "page title with breadcrumb", "navigation header", "page heading"],
+      "composition": "Stack(gap=100) > Breadcrumb(items=[{ label, href }]) + Heading level={1} (page title) + optional Text variant=\"secondary\" (subtitle)"
+    },
+    {
+      "name": "FormWithValidation",
+      "keywords": ["form validation", "validated form", "form errors", "error form", "input validation"],
+      "composition": "Stack(gap=200) > optional Banner(kind=\"error\") for form-level errors + Input/Select with error prop (string) for field-level validation. Submit Button at bottom."
+    },
+    {
+      "name": "CardGridLayout",
+      "keywords": ["card grid", "grid of cards", "card layout", "stat grid", "card columns"],
+      "composition": "Grid(columns=2 or 3, gap=300) > Card > Card.Body > Stack(gap=100) > content. Use for stat cards, feature cards, or any repeated card layout."
     }
   ]
 }
