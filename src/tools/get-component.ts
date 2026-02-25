@@ -102,6 +102,7 @@ export function registerGetComponent(
         ...(meta.statuses && { statuses: meta.statuses }),
         ...(meta.iconList && { iconList: meta.iconList }),
         ...(meta.composition && { composition: meta.composition }),
+        ...(meta.gotchas && meta.gotchas.length > 0 && { gotchas: meta.gotchas }),
         examples: meta.examples,
         useCases: meta.useCases,
         dependencies: deps.map(d => ({

@@ -228,8 +228,8 @@ function buildBundleFromSource(): BundleData {
  * Enrich component metadata with curated aliases and useCases
  * that the upstream source doesn't include but improve search relevance.
  */
-function enrichComponentMetadata(registry: { components: Record<string, { aliases?: string[]; useCases?: string[] }> }) {
-  const ENRICHMENTS: Record<string, { aliases?: string[]; useCases?: string[] }> = {
+function enrichComponentMetadata(registry: { components: Record<string, { aliases?: string[]; useCases?: string[]; description?: string }> }) {
+  const ENRICHMENTS: Record<string, { aliases?: string[]; useCases?: string[]; description?: string }> = {
     Drawer: {
       aliases: ['overlay panel', 'bottom sheet', 'dialog panel'],
       useCases: ['form-overlay', 'detail-overlay', 'mobile-dialog'],
@@ -241,6 +241,18 @@ function enrichComponentMetadata(registry: { components: Record<string, { aliase
     DataTable: {
       useCases: ['column-visibility', 'row-selection', 'inline-editing'],
     },
+    Checkbox: {
+      description: 'Form control for selecting one or more options from a set. Supports checked, indeterminate, and error states with label and description.',
+    },
+    Select: {
+      description: 'Dropdown form control for choosing from a predefined list. Supports labels, placeholder, error states, and required validation.',
+    },
+    Slider: {
+      description: 'Draggable range input for selecting a numeric value within a min/max range. Supports step increments, tooltips, and custom formatting.',
+    },
+    Switch: {
+      description: 'Binary toggle for enabling/disabling a setting. Use for instant-effect changes; use Checkbox for form submissions.',
+    },
   };
 
   for (const [name, additions] of Object.entries(ENRICHMENTS)) {
@@ -251,6 +263,9 @@ function enrichComponentMetadata(registry: { components: Record<string, { aliase
     }
     if (additions.useCases) {
       meta.useCases = [...(meta.useCases || []), ...additions.useCases];
+    }
+    if (additions.description) {
+      meta.description = additions.description;
     }
   }
 }

@@ -41,5 +41,51 @@
   "FilterBar": [
     "Config-driven via slot props: search, quickActions, filters, viewSelector.",
     "NOT composed from Inline+SearchInput — use the FilterBar component directly."
+  ],
+  "Input": [
+    "Use type prop for variants (text, email, password, number, etc.).",
+    "Use error prop (string) for inline validation messages."
+  ],
+  "Modal": [
+    "footer prop takes ReactNode — use Inline with Buttons for standard actions.",
+    "Always provide onClose handler.",
+    "Do NOT nest Modals — use a single Modal with conditional content instead."
+  ],
+  "Tabs": [
+    "Config-driven: pass items={[{ id, label, content }]} array.",
+    "Controlled mode: use activeTab + onChange props together."
+  ],
+  "Badge": [
+    "Use kind prop (not variant) to control color: success, warning, error, neutral, info.",
+    "Badge is NOT clickable — use Button or Link for interactive elements."
+  ],
+  "Select": [
+    "Config-driven: pass options={[{ value, label }]} array.",
+    "onChange returns the value string directly, NOT a synthetic event."
+  ],
+  "Checkbox": [
+    "onChange receives a boolean value, NOT an event object.",
+    "No CheckboxGroup component exists — compose with Stack + multiple Checkbox."
+  ],
+  "Switch": [
+    "Use Switch (not Toggle — Toggle does not exist in the registry).",
+    "onChange receives a boolean value, NOT an event object.",
+    "Use Switch for instant-effect settings; use Checkbox for form submissions."
+  ],
+  "Drawer": [
+    "Always provide onClose handler.",
+    "title prop is required for accessibility."
+  ],
+  "Dropdown": [
+    "Config-driven: pass items={[{ id, label, onClick }]} array.",
+    "trigger prop specifies the element that opens the dropdown."
+  ],
+  "Pagination": [
+    "Controlled component: requires page + onPageChange props.",
+    "totalPages prop is required."
+  ],
+  "Breadcrumb": [
+    "Config-driven: pass items={[{ label, href }]} array.",
+    "Already renders semantic <nav> — do NOT wrap in another <nav>."
   ]
 }
