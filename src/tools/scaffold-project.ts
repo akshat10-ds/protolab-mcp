@@ -585,7 +585,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--ink-font-family, 'DS Indigo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
   color: var(--ink-font-default);
   background-color: var(--ink-bg-default);
   -webkit-font-smoothing: antialiased;
@@ -606,7 +606,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--ink-font-family, 'DS Indigo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
   color: var(--ink-font-default);
   background-color: var(--ink-bg-default);
   -webkit-font-smoothing: antialiased;
@@ -1018,12 +1018,14 @@ export function registerScaffoldProject(
         Object.assign(files, barrelFiles, boilerplateFiles);
 
         const siteUrl = getSiteBaseUrl();
+        const availableIcons = allResolved.has('Icon') ? [...COMMON_ICONS].sort() : undefined;
         const result = {
           projectName,
           mode: 'inline' as const,
           totalFiles: Object.keys(files).length,
           componentCount,
           components: componentNames,
+          ...(availableIcons && { availableIcons }),
           ...(notFound.length > 0 && { notFound }),
           quickStart: `cd ${projectName} && npm install && npm run dev`,
           instructions: includeFonts
@@ -1099,6 +1101,7 @@ export function registerScaffoldProject(
         fontFileEntries,
       );
 
+      const availableIcons = allResolved.has('Icon') ? [...COMMON_ICONS].sort() : undefined;
       const result = {
         projectName,
         mode: 'urls' as const,
@@ -1106,6 +1109,7 @@ export function registerScaffoldProject(
         totalFiles: Object.keys(boilerplateFiles).length + Object.keys(barrelFiles).length + sourceFiles.length + Object.keys(generatedFiles).length + 2, // +2 for tokens + utils
         componentCount,
         components: componentNames,
+        ...(availableIcons && { availableIcons }),
         ...(notFound.length > 0 && { notFound }),
         quickStart: `cd ${projectName} && npm install && npm run dev`,
         instructions: `Option A (recommended): Save setupScript to setup.sh and run "bash setup.sh". Option B: Write boilerplate/barrels/generatedFiles directly, fetch sourceFiles URLs to destPaths, fetch infrastructure URLs, ${includeFonts ? 'fetch fontFiles to public/fonts/, ' : ''}then run quickStart. Import from '@/design-system'.`,

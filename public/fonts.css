@@ -36,7 +36,16 @@
   font-display: swap;
 }
 
-/* Bold - Direct family name for explicit usage */
+/* Bold */
+@font-face {
+  font-family: 'DS Indigo';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/DSIndigo-Bold/DSIndigo-Bold.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* Bold - alternate family name for --ink-font-family-bold token */
 @font-face {
   font-family: 'DS Indigo Bold';
   font-style: normal;
