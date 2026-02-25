@@ -87,6 +87,51 @@ describe('Tool output quality — search_components', () => {
   });
 });
 
+// ── DataTable gotcha accuracy ────────────────────────────────────────────
+
+describe('Tool output quality — DataTable gotcha', () => {
+  test('DataTable gotcha mentions cell(row), not cell(value, row)', async () => {
+    const data = parseResult(
+      await client.callTool({ name: 'get_component', arguments: { name: 'DataTable' } }),
+    );
+    const gotchas = data.gotchas as string[];
+    expect(gotchas).toBeDefined();
+    const cellGotcha = gotchas.find(g => g.toLowerCase().includes('cell'));
+    expect(cellGotcha, 'DataTable should have a cell-related gotcha').toBeDefined();
+    expect(cellGotcha).toContain('cell(row)');
+    expect(cellGotcha).not.toContain('cell(value, row)');
+  });
+});
+
+// ── Icon discoverability ────────────────────────────────────────────────
+
+describe('Tool output quality — Icon discoverability', () => {
+  test('get_component("Icon") returns non-empty iconList', async () => {
+    const data = parseResult(
+      await client.callTool({ name: 'get_component', arguments: { name: 'Icon' } }),
+    );
+    expect(data.iconList).toBeDefined();
+    expect(Array.isArray(data.iconList)).toBe(true);
+    expect((data.iconList as string[]).length).toBeGreaterThan(0);
+  });
+
+  test('build_prototype prompt includes icon names when Icon is matched', async () => {
+    const result = await client.getPrompt({
+      name: 'build_prototype',
+      arguments: { description: 'A page with Icon component showing check and close icons' },
+    });
+    // MCP SDK returns messages with content as { type: 'text', text: string }
+    const text = result.messages.map(m => {
+      const content = m.content as unknown;
+      if (typeof content === 'string') return content;
+      if (typeof content === 'object' && content !== null && 'text' in content) return (content as { text: string }).text;
+      if (Array.isArray(content)) return content.map(c => typeof c === 'object' && c !== null && 'text' in c ? (c as { text: string }).text : '').join('');
+      return '';
+    }).join('\n');
+    expect(text).toContain('Available icons:');
+  });
+});
+
 // ── validate_component_usage quality ────────────────────────────────────
 
 describe('Tool output quality — validate_component_usage', () => {

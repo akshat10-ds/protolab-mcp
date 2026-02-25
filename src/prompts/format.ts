@@ -68,6 +68,11 @@ export function apiCard(meta: ComponentMeta): string {
     }
   }
 
+  // Available icon names (for Icon component discoverability)
+  if (meta.iconList && meta.iconList.length > 0) {
+    lines.push(`Available icons: ${meta.iconList.join(', ')}`);
+  }
+
   // One example — join all example lines into a single JSX snippet
   if (meta.examples && meta.examples.length > 0) {
     const joined = meta.examples.join(' ').replace(/\s{2,}/g, ' ').trim();

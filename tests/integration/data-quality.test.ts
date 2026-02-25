@@ -134,6 +134,29 @@ describe('Data quality — cross-file references', () => {
   });
 });
 
+// ── Layer 1 eval: gotcha accuracy checks ────────────────────────────────
+
+describe('Data quality — gotcha accuracy', () => {
+  const gotchasMap = gotchasData as Record<string, string[]>;
+
+  test('no gotcha contains known-wrong patterns', () => {
+    const knownWrong = ['cell(value, row)', 'cell(value,row)'];
+    const found: { component: string; gotcha: string; pattern: string }[] = [];
+
+    for (const [component, entries] of Object.entries(gotchasMap)) {
+      for (const entry of entries) {
+        for (const pattern of knownWrong) {
+          if (entry.includes(pattern)) {
+            found.push({ component, gotcha: entry, pattern });
+          }
+        }
+      }
+    }
+
+    expect(found, `Gotchas with known-wrong patterns: ${JSON.stringify(found)}`).toEqual([]);
+  });
+});
+
 // ── Layer 1 eval: coverage checks ──────────────────────────────────────
 
 describe('Data quality — coverage', () => {

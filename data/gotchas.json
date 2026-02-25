@@ -16,7 +16,7 @@
   ],
   "DataTable": [
     "Data-driven: NO children. Pass columns={DataTableColumn[]} and data={T[]}.",
-    "Column cell rendering: use cell(value, row) function in column definition.",
+    "Column cell rendering: cell(row) receives the entire row object. Alternative: render(value, row, rowIndex) for value-first access.",
     "For row actions: use renderRowActions={(row) => <Inline>...</Inline>} prop."
   ],
   "GlobalNav": [
