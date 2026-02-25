@@ -13,7 +13,7 @@
     {
       "name": "FormSection",
       "keywords": ["form section", "settings section", "form group", "form card"],
-      "composition": "Card > Card.Header (section title as Heading level=2) + Card.Body > Stack(gap=200) > form fields (Input, Select, Toggle). Save/Cancel buttons in Inline at bottom."
+      "composition": "Card > Card.Header (section title as Heading level=2) + Card.Body > Stack(gap=200) > form fields (Input, Select, Switch). Save/Cancel buttons in Inline at bottom."
     },
     {
       "name": "StatCard",

@@ -75,7 +75,7 @@
       "title": "Settings Page (Form-Heavy with Sidebar)",
       "keywords": ["settings", "admin", "preferences", "configuration", "account", "profile", "options", "form"],
       "componentTree": "DocuSignShell\n├── GlobalNav (globalNav slot prop)\n├── LocalNav (settings sections as nav)\n└── Stack (main content)\n    ├── Heading level={1} (page title)\n    ├── Card (form section 1)\n    │   ├── Card.Header (section title)\n    │   └── Card.Body > Stack > form fields\n    └── Card (form section 2)\n        ├── Card.Header\n        └── Card.Body > Stack > form fields",
-      "components": ["DocuSignShell", "GlobalNav", "LocalNav", "Card", "Stack", "Heading", "Text", "Input", "Select", "Toggle", "Button", "Inline"],
+      "components": ["DocuSignShell", "GlobalNav", "LocalNav", "Card", "Stack", "Heading", "Text", "Input", "Select", "Switch", "Button", "Inline"],
       "spacingStack": [
         { "from": "GlobalNav", "to": "Content", "token": "--ink-spacing-400", "px": 32 },
         { "from": "PageTitle", "to": "FirstCard", "token": "--ink-spacing-300", "px": 24 },
